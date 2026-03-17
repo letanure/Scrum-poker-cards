@@ -208,16 +208,18 @@ export default class PokerServer implements Party.Server {
   private topics: string[] = [];
   private currentTopicIndex = 0;
   private topicResults: Map<number, TopicResult> = new Map();
-  private colorIndex = 0;
   private pendingHostPromotion: ReturnType<typeof setTimeout> | null = null;
   private disconnectedHostName: string | null = null;
 
   constructor(readonly room: Party.Room) {}
 
-  private getNextColor(): string {
-    const color = PLAYER_COLORS[this.colorIndex % PLAYER_COLORS.length];
-    this.colorIndex++;
-    return color;
+  private getColorForName(name: string): string {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
+    }
+    const index = Math.abs(hash) % PLAYER_COLORS.length;
+    return PLAYER_COLORS[index];
   }
 
   private serializeState(): SerializedRoomState {
@@ -332,7 +334,7 @@ export default class PokerServer implements Party.Server {
     const player: Player = {
       id: sender.id,
       name: msg.name,
-      color: this.getNextColor(),
+      color: this.getColorForName(msg.name),
       hasVoted: false,
     };
 
