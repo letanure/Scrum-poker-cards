@@ -343,6 +343,67 @@ export default class PokerServer implements Party.Server {
   }
 
   private handleJoin(sender: Party.Connection, msg: JoinMessage): void {
+    // Check if same name already exists — replace the old connection
+    let existingId: string | null = null;
+    let existingPlayer: Player | null = null;
+    for (const [id, p] of this.players.entries()) {
+      if (p.name === msg.name && id !== sender.id) {
+        existingId = id;
+        existingPlayer = p;
+        break;
+      }
+    }
+
+    if (existingId && existingPlayer) {
+      // Take over the existing player's spot
+      const wasHost = this.hostId === existingId;
+
+      // Close old connection silently
+      for (const conn of this.room.getConnections()) {
+        if (conn.id === existingId) {
+          conn.close();
+          break;
+        }
+      }
+
+      // Remove old entry, preserve vote state
+      const existingVote = this.votes.get(existingId);
+      const existingConfidence = this.confidences.get(existingId);
+      this.players.delete(existingId);
+      this.votes.delete(existingId);
+      this.confidences.delete(existingId);
+      this.explanations.delete(existingId);
+
+      // Create new entry with same name/color, new ID
+      const player: Player = {
+        id: sender.id,
+        name: existingPlayer.name,
+        color: existingPlayer.color,
+        hasVoted: existingPlayer.hasVoted,
+      };
+      this.players.set(sender.id, player);
+
+      // Restore vote if they had one
+      if (existingVote) this.votes.set(sender.id, existingVote);
+      if (existingConfidence) this.confidences.set(sender.id, existingConfidence);
+
+      // Transfer host if needed
+      if (wasHost) this.hostId = sender.id;
+
+      // Send full state and broadcast sync (simpler than player-left + player-joined)
+      this.broadcastSync();
+      return;
+    }
+
+    // Returning host within grace period (check original name before dedup)
+    if (this.disconnectedHostName === msg.name && this.pendingHostPromotion) {
+      clearTimeout(this.pendingHostPromotion);
+      this.pendingHostPromotion = null;
+      this.disconnectedHostName = null;
+      this.hostId = sender.id;
+    }
+
+    // New player
     const uniqueName = this.deduplicateName(msg.name);
     const player: Player = {
       id: sender.id,
@@ -352,14 +413,6 @@ export default class PokerServer implements Party.Server {
     };
 
     this.players.set(sender.id, player);
-
-    // Returning host within grace period (check original name before dedup)
-    if (this.disconnectedHostName === msg.name && this.pendingHostPromotion) {
-      clearTimeout(this.pendingHostPromotion);
-      this.pendingHostPromotion = null;
-      this.disconnectedHostName = null;
-      this.hostId = sender.id;
-    }
 
     // First player becomes host (only if no host assigned yet)
     if (this.players.size === 1 && (this.hostId === "" || !this.players.has(this.hostId))) {
