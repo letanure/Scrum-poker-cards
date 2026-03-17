@@ -1,0 +1,25 @@
+@import url("https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap");
+@import "tailwindcss";
+
+:root {
+  --color-primary: #ba3033;
+  --color-primary-light: #f8abaa;
+  --color-accent: #f0649b;
+  --color-purple: #7f6cb1;
+  --color-green: #94a979;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: "Nunito", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100svh;
+}

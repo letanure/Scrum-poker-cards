@@ -1,0 +1,40 @@
+{
+  "name": "scrum-poker-cards",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Fun planning poker with illustrated cards",
+  "scripts": {
+    "dev": "vite",
+    "dev:party": "npx partykit dev",
+    "dev:all": "concurrently \"npm run dev\" \"npm run dev:party\"",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "deploy": "vite build && npx partykit deploy",
+    "typecheck": "tsc -b"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/letanure/Scrum-poker-cards.git"
+  },
+  "license": "CC-BY-3.0",
+  "dependencies": {
+    "framer-motion": "^12.38.0",
+    "partysocket": "^1.1.16",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-router-dom": "^7.13.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.2.1",
+    "@types/node": "^25.5.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "concurrently": "^9.2.1",
+    "partykit": "^0.0.115",
+    "tailwindcss": "^4.2.1",
+    "typescript": "^5.9.3",
+    "vite": "^8.0.0"
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "name": "scrum-poker",
+  "main": "party/poker.ts",
+  "compatibilityDate": "2024-12-01"
+}
