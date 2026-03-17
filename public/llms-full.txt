@@ -1,0 +1,89 @@
+# Scrum Poker Cards — Complete Documentation
+
+> Free, real-time planning poker for agile teams with illustrated cards.
+
+## What is Planning Poker?
+
+Planning poker is an agile estimation technique where team members simultaneously reveal their effort estimates for a user story. This prevents anchoring bias — everyone commits to their estimate before seeing others' votes.
+
+## How Scrum Poker Cards Works
+
+1. **Create a session** at https://scrumpoker.work — enter your name, pick a card preset, click Create
+2. **Share the room URL** with your team (e.g., https://scrumpoker.work/room/funny-unicorn-42)
+3. **Everyone joins** by entering their name — no signup required
+4. **Vote** by clicking a card from your hand at the bottom
+5. **Host reveals** all votes simultaneously — see the results with stats
+6. **Discuss & repeat** — start a new round for the next story
+
+## Card Presets
+
+### All Cards (default, 14 cards)
+1 (Low hanging fruit), 2 (Piece of cake), 3 (It ain't rocket science), 5 (Weird but doable), 8 (An arm and a leg), 13 (Squeaking by), 20 (Don't put all your eggs in one basket), 40 (In a real pickle), 100 (Monster task), Infinity (When pigs fly), ? (Here be dragons), Coffee (Coffee break), Brownie (Eat a brownie), Yak (Yak Shaving)
+
+### Fibonacci
+1, 2, 3, 5, 8, 13, 21, ?, Coffee
+
+### Simple
+1, 2, 3, 5, 8, 13, ?, Coffee
+
+### T-Shirt Sizes
+XS, S, M, L, XL, ?, Coffee
+
+### Powers of 2
+1, 2, 4, 8, 16, 32, ?, Coffee
+
+## Features
+
+### Confidence Score
+When voting, players indicate their confidence: Confident, Guessing, or No Idea. Results show aggregate team confidence (HIGH/MEDIUM/LOW).
+
+### Topic Queue
+The host can pre-add a list of stories to vote through in order. The team advances through them with auto-progression. At the end, a summary table shows all estimates.
+
+### Outlier Detection
+After reveal, if someone's vote is far from the group median, the app prompts them to explain. Explanations are shared with the team.
+
+### Fun Reveal Messages
+Based on vote patterns: "Ship it!" (consensus), "We have no idea" (huge spread), "This sprint is doomed" (all high), etc.
+
+### Host Controls
+- Reveal votes / Start new round
+- Set topic per round
+- Configure card preset
+- Kick players (with confirmation)
+- Transfer host role to another player
+
+### Session Properties
+- Ephemeral: sessions exist only in memory
+- No database, no persistence
+- No accounts or authentication
+- Real-time via WebSocket (PartyKit on Cloudflare Workers)
+- Supports any number of players
+
+## Card Illustrations
+
+The card illustrations were created by Redbooth for their internal sprint planning. Each card features a playful idiom matching the effort level. They are licensed under Creative Commons Attribution (CC BY 3.0).
+
+Original repository: https://github.com/redbooth/scrum-poker-cards
+
+## Privacy
+
+- No accounts or personal data collected
+- Anonymous analytics via PostHog (memory persistence, no cookies)
+- Error tracking via Sentry (technical data only)
+- Player names stored in browser localStorage only
+- Sessions are ephemeral — nothing saved server-side
+
+## Technical Details
+
+- Frontend: Vite + React 19 + TypeScript + Tailwind CSS v4 + Framer Motion
+- Real-time: PartyKit (WebSocket rooms on Cloudflare Workers)
+- Hosting: Cloudflare Pages
+- Player identity: UUID in localStorage (stable across reconnects)
+- Tab coordination: BroadcastChannel API
+
+## Author
+
+Built by Luiz Tanure (https://github.com/letanure)
+Source: https://github.com/letanure/Scrum-poker-cards
+Website: https://scrumpoker.work

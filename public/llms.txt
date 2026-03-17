@@ -1,0 +1,44 @@
+# Scrum Poker Cards
+
+> Free, real-time planning poker for agile teams with illustrated cards.
+
+## About
+
+Scrum Poker Cards is a free, open-source web app for agile planning poker. Teams create a session, share a link, and estimate stories together in real-time — no signup required.
+
+The app features beautifully illustrated cards originally designed by Redbooth, each with a fun idiom matching the effort level (e.g., "Piece of cake" for 2, "Here be dragons" for unknown).
+
+## Features
+
+- Real-time multiplayer sessions via WebSocket
+- 14 illustrated card designs (CC BY 3.0 by Redbooth)
+- Card presets: All Cards, Fibonacci, Simple, T-Shirt Sizes, Powers of 2
+- Confidence score alongside votes (confident / guessing / no idea)
+- Topic queue for prepared sessions
+- Outlier detection with explanation prompts
+- Fun reveal messages based on vote patterns
+- Host controls: reveal, new round, kick, transfer host
+- Keyboard navigation (arrow keys)
+- No accounts, no tracking cookies, ephemeral sessions
+
+## Tech Stack
+
+- Frontend: React + TypeScript + Tailwind CSS + Framer Motion
+- Real-time: PartyKit (Cloudflare Workers)
+- Hosting: Cloudflare Pages
+- Analytics: PostHog (anonymous, memory-only)
+- Error tracking: Sentry
+
+## Links
+
+- Website: https://scrumpoker.work
+- Source: https://github.com/letanure/Scrum-poker-cards
+- Original cards: https://github.com/redbooth/scrum-poker-cards
+- Author: Luiz Tanure (https://github.com/letanure)
+- License: CC BY 3.0 (card illustrations)
+
+## Pages
+
+- Home: https://scrumpoker.work/
+- About: https://scrumpoker.work/about
+- Privacy: https://scrumpoker.work/privacy
