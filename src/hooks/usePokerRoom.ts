@@ -19,7 +19,7 @@ import type {
 } from "../lib/protocol.ts";
 
 const PARTYKIT_HOST =
-  import.meta.env.VITE_PARTYKIT_HOST ?? "localhost:1999";
+  import.meta.env.VITE_PARTYKIT_HOST || "localhost:1999";
 
 function getOrCreateStableId(): string {
   const existing = localStorage.getItem("poker-player-id");
