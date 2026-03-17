@@ -13,6 +13,7 @@ import type {
   SetTopicsMessage,
   NextTopicMessage,
   PrevTopicMessage,
+  KickMessage,
   ConfidenceLevel,
 } from "../lib/protocol.ts";
 
@@ -24,6 +25,7 @@ export function usePokerRoom(roomId: string, playerName: string) {
   const [isConnected, setIsConnected] = useState(false);
   const [voteVersions, setVoteVersions] = useState<Record<string, number>>({});
   const [playerId, setPlayerId] = useState("");
+  const [kicked, setKicked] = useState(false);
 
   const socket = usePartySocket({
     host: PARTYKIT_HOST,
@@ -152,6 +154,10 @@ export function usePokerRoom(roomId: string, playerName: string) {
           });
           break;
         }
+        case "kicked": {
+          setKicked(true);
+          break;
+        }
         case "error": {
           console.error("[PokerRoom] Server error:", message.message);
           break;
@@ -234,6 +240,14 @@ export function usePokerRoom(roomId: string, playerName: string) {
     socket.send(JSON.stringify(msg));
   }, [socket]);
 
+  const kick = useCallback(
+    (targetPlayerId: string) => {
+      const msg: KickMessage = { type: "kick", playerId: targetPlayerId };
+      socket.send(JSON.stringify(msg));
+    },
+    [socket],
+  );
+
   return {
     state,
     isConnected,
@@ -248,5 +262,7 @@ export function usePokerRoom(roomId: string, playerName: string) {
     prevTopic,
     playerId,
     voteVersions,
+    kicked,
+    kick,
   };
 }

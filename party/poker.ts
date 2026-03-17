@@ -106,6 +106,11 @@ interface PrevTopicMessage {
   type: "prev-topic";
 }
 
+interface KickMessage {
+  type: "kick";
+  playerId: string;
+}
+
 type ClientMessage =
   | JoinMessage
   | VoteMessage
@@ -116,7 +121,8 @@ type ClientMessage =
   | ExplainMessage
   | SetTopicsMessage
   | NextTopicMessage
-  | PrevTopicMessage;
+  | PrevTopicMessage
+  | KickMessage;
 
 // Server → Client messages
 interface SyncMessage {
@@ -167,6 +173,10 @@ interface TopicsUpdatedMessage {
   currentTopicIndex: number;
 }
 
+interface KickedMessage {
+  type: "kicked";
+}
+
 type ServerMessage =
   | SyncMessage
   | PlayerJoinedMessage
@@ -176,7 +186,8 @@ type ServerMessage =
   | NewRoundBroadcastMessage
   | ErrorMessage
   | ExplanationMessage
-  | TopicsUpdatedMessage;
+  | TopicsUpdatedMessage
+  | KickedMessage;
 
 function serialize(message: ServerMessage): string {
   return JSON.stringify(message);
@@ -555,6 +566,46 @@ export default class PokerServer implements Party.Server {
     this.broadcastTopicsUpdated();
   }
 
+  private handleKick(sender: Party.Connection, msg: KickMessage): void {
+    if (!this.isHost(sender.id)) {
+      this.sendError(sender, "Only the host can kick players");
+      return;
+    }
+
+    if (msg.playerId === sender.id) {
+      this.sendError(sender, "You cannot kick yourself");
+      return;
+    }
+
+    const player = this.players.get(msg.playerId);
+    if (!player) {
+      this.sendError(sender, "Player not found");
+      return;
+    }
+
+    this.players.delete(msg.playerId);
+    this.votes.delete(msg.playerId);
+    this.confidences.delete(msg.playerId);
+    this.explanations.delete(msg.playerId);
+
+    // Send kicked message to the kicked player and close their connection
+    for (const conn of this.room.getConnections()) {
+      if (conn.id === msg.playerId) {
+        conn.send(serialize({ type: "kicked" }));
+        conn.close();
+        break;
+      }
+    }
+
+    // Broadcast player-left to remaining players
+    this.room.broadcast(
+      serialize({ type: "player-left", playerId: msg.playerId })
+    );
+
+    // Check if removing the player triggers auto-reveal
+    this.checkAutoReveal();
+  }
+
   private handleConfigure(
     sender: Party.Connection,
     msg: ConfigureMessage
@@ -615,6 +666,9 @@ export default class PokerServer implements Party.Server {
         break;
       case "prev-topic":
         this.handlePrevTopic(sender);
+        break;
+      case "kick":
+        this.handleKick(sender, parsed);
         break;
       default:
         this.sendError(sender, "Unknown message type");

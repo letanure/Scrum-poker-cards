@@ -10,6 +10,7 @@ interface PlayerSlotProps {
   isHost: boolean;
   isCurrentUser: boolean;
   voteVersion: number;
+  onKick?: () => void;
 }
 
 function getInitial(name: string): string {
@@ -24,6 +25,7 @@ export function PlayerSlot({
   isHost,
   isCurrentUser,
   voteVersion,
+  onKick,
 }: PlayerSlotProps) {
   const isRevealed = vote !== null;
   const controls = useAnimationControls();
@@ -43,11 +45,23 @@ export function PlayerSlot({
   return (
     <motion.div
       id="player-slot"
-      className="flex flex-col items-center gap-2"
+      className="group relative flex flex-col items-center gap-2"
       initial={{ scale: 0, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       transition={{ type: "spring", stiffness: 300, damping: 20 }}
     >
+      {/* Kick button */}
+      {onKick && (
+        <button
+          onClick={onKick}
+          className="absolute -top-1 -right-1 z-10 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:bg-red-600 shadow-sm"
+          aria-label={`Remove ${name}`}
+        >
+          <svg viewBox="0 0 12 12" fill="currentColor" className="w-2.5 h-2.5">
+            <path d="M9.5 3.2L8.8 2.5 6 5.3 3.2 2.5 2.5 3.2 5.3 6 2.5 8.8l.7.7L6 6.7l2.8 2.8.7-.7L6.7 6z" />
+          </svg>
+        </button>
+      )}
       {/* Card area */}
       <div id="player-slot__card-area" className="h-[130px] flex items-end justify-center">
         <AnimatePresence>

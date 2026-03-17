@@ -105,6 +105,11 @@ export type PrevTopicMessage = {
   type: "prev-topic";
 };
 
+export type KickMessage = {
+  type: "kick";
+  playerId: string;
+};
+
 export type ClientMessage =
   | JoinMessage
   | VoteMessage
@@ -115,7 +120,8 @@ export type ClientMessage =
   | ExplainMessage
   | SetTopicsMessage
   | NextTopicMessage
-  | PrevTopicMessage;
+  | PrevTopicMessage
+  | KickMessage;
 
 // --- Server → Client messages ---
 
@@ -167,6 +173,10 @@ export type TopicsUpdatedMessage = {
   currentTopicIndex: number;
 };
 
+export type KickedMessage = {
+  type: "kicked";
+};
+
 export type ServerMessage =
   | SyncMessage
   | PlayerJoinedMessage
@@ -176,4 +186,5 @@ export type ServerMessage =
   | NewRoundServerMessage
   | ErrorMessage
   | ExplanationMessage
-  | TopicsUpdatedMessage;
+  | TopicsUpdatedMessage
+  | KickedMessage;

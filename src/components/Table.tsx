@@ -1,3 +1,4 @@
+import { motion } from "framer-motion";
 import { PlayerSlot } from "./PlayerSlot";
 
 interface Player {
@@ -13,12 +14,35 @@ interface TableProps {
   currentUserId: string;
   revealedVotes: Record<string, string> | null;
   voteVersions: Record<string, number>;
+  isHost?: boolean;
+  onReveal?: () => void;
+  onNewRound?: () => void;
+  onNextTopic?: () => void;
+  onKick?: (playerId: string) => void;
+  hasTopics?: boolean;
+  isLastTopic?: boolean;
+  phase?: string;
 }
 
-export function Table({ players, currentUserId, revealedVotes, voteVersions }: TableProps) {
+export function Table({
+  players,
+  currentUserId,
+  revealedVotes,
+  voteVersions,
+  isHost = false,
+  onReveal,
+  onNewRound,
+  onNextTopic,
+  onKick,
+  hasTopics = false,
+  isLastTopic = false,
+  phase,
+}: TableProps) {
   const votedCount = players.filter((p) => p.hasVoted).length;
   const totalCount = players.length;
   const allVoted = votedCount === totalCount && totalCount > 0;
+  const isVoting = phase === "voting";
+  const isRevealed = phase === "revealed";
 
   return (
     <div id="table" className="flex flex-col items-center gap-8 py-8">
@@ -34,27 +58,74 @@ export function Table({ players, currentUserId, revealedVotes, voteVersions }: T
             isHost={player.isHost}
             isCurrentUser={player.id === currentUserId}
             voteVersion={voteVersions[player.id] ?? 0}
+            onKick={
+              onKick && player.id !== currentUserId
+                ? () => onKick(player.id)
+                : undefined
+            }
           />
         ))}
       </div>
 
-      {/* Center status */}
-      <div id="table__status" className="flex items-center justify-center px-6 py-3 rounded-2xl bg-white/80 shadow-md border border-[#F8ABAA]/40 backdrop-blur-sm">
+      {/* Center status + action */}
+      <div id="table__status" className="flex items-center justify-center gap-3 px-6 py-3 rounded-2xl bg-white/80 shadow-md border border-[#F8ABAA]/40 backdrop-blur-sm">
         {revealedVotes ? (
-          <span className="text-sm font-semibold text-[#BA3033]">
-            Votes revealed!
-          </span>
-        ) : allVoted ? (
-          <span className="text-sm font-semibold text-[#94A979]">
-            All players voted - ready to reveal
-          </span>
+          <>
+            <span className="text-sm font-semibold text-[#BA3033]">
+              Votes revealed!
+            </span>
+            {isHost && isRevealed && hasTopics && onNextTopic && (
+              <motion.button
+                className="px-4 py-1.5 rounded-xl bg-[#7F6CB1] text-white font-semibold text-xs shadow-md cursor-pointer whitespace-nowrap"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={onNextTopic}
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 400, damping: 20 }}
+              >
+                {isLastTopic ? "Finish & Summary" : "Next Story ▶"}
+              </motion.button>
+            )}
+            {isHost && isRevealed && !hasTopics && onNewRound && (
+              <motion.button
+                className="px-4 py-1.5 rounded-xl bg-[#7F6CB1] text-white font-semibold text-xs shadow-md cursor-pointer whitespace-nowrap"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={onNewRound}
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 400, damping: 20 }}
+              >
+                New Round
+              </motion.button>
+            )}
+          </>
         ) : (
-          <span className="text-sm text-gray-500">
-            <span className="font-semibold text-[#7F6CB1]">{votedCount}</span>
-            {" / "}
-            <span className="font-semibold">{totalCount}</span>
-            {" voted"}
-          </span>
+          <>
+            {allVoted ? (
+              <span className="text-sm font-semibold text-[#94A979]">
+                All players voted
+              </span>
+            ) : (
+              <span className="text-sm text-gray-500">
+                <span className="font-semibold text-[#7F6CB1]">{votedCount}</span>
+                {" / "}
+                <span className="font-semibold">{totalCount}</span>
+                {" voted"}
+              </span>
+            )}
+            {isHost && isVoting && onReveal && (
+              <motion.button
+                className="px-4 py-1.5 rounded-xl bg-[#BA3033] text-white font-semibold text-xs shadow-md cursor-pointer whitespace-nowrap"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={onReveal}
+              >
+                Reveal Cards
+              </motion.button>
+            )}
+          </>
         )}
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect, useMemo, type ChangeEvent } from "react";
-import { useParams, useLocation } from "react-router-dom";
+import { useParams, useLocation, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePokerRoom } from "../hooks/usePokerRoom.ts";
 import { Table } from "../components/Table.tsx";
@@ -8,7 +8,7 @@ import { Results } from "../components/Results.tsx";
 import { HostControls } from "../components/HostControls.tsx";
 import { ShareButton } from "../components/ShareButton.tsx";
 import { TopicBar } from "../components/TopicBar.tsx";
-import { TopicInput } from "../components/TopicInput.tsx";
+
 import { TopicSummary } from "../components/TopicSummary.tsx";
 import { PRESETS, PRESET_LABELS, type PresetName } from "../lib/cards.ts";
 import { CONFIDENCE_LEVELS, type ConfidenceLevel } from "../lib/protocol.ts";
@@ -203,6 +203,7 @@ export function Room() {
   const [selectedCard, setSelectedCard] = useState<string | null>(null);
   const [selectedConfidence, setSelectedConfidence] = useState<ConfidenceLevel>(CONFIDENCE_LEVELS.confident);
   const [shout, setShout] = useState<{ text: string; explanation?: string; version: number } | null>(null);
+  const [kickConfirm, setKickConfirm] = useState<{ playerId: string; name: string } | null>(null);
 
   const shoutVersionRef = useRef(0);
 
@@ -239,6 +240,8 @@ export function Room() {
     prevTopic,
     playerId,
     voteVersions,
+    kicked,
+    kick,
   } = usePokerRoom(effectiveRoomId, effectiveName);
 
   const initialConfigSentRef = useRef(false);
@@ -280,6 +283,54 @@ export function Room() {
     setSelectedConfidence(CONFIDENCE_LEVELS.confident);
     nextTopic();
   }, [nextTopic]);
+
+  const handleKickClick = useCallback(
+    (targetPlayerId: string) => {
+      const player = state?.players.find((p) => p.id === targetPlayerId);
+      if (player) {
+        setKickConfirm({ playerId: targetPlayerId, name: player.name });
+      }
+    },
+    [state?.players],
+  );
+
+  const handleKickConfirm = useCallback(() => {
+    if (kickConfirm) {
+      kick(kickConfirm.playerId);
+      setKickConfirm(null);
+    }
+  }, [kick, kickConfirm]);
+
+  const handleKickCancel = useCallback(() => {
+    setKickConfirm(null);
+  }, []);
+
+  if (kicked) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#F8ABAA]/20 via-white to-[#F0649B]/10 flex items-center justify-center px-4">
+        <motion.div
+          className="bg-white rounded-2xl shadow-xl p-8 max-w-sm w-full flex flex-col items-center gap-4 text-center"
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 300, damping: 25 }}
+        >
+          <span className="text-4xl">👋</span>
+          <h2 className="text-lg font-bold text-[#BA3033]">
+            You were removed from this session
+          </h2>
+          <p className="text-sm text-gray-500">
+            The host has removed you from the room.
+          </p>
+          <Link
+            to="/"
+            className="mt-2 px-6 py-3 rounded-xl bg-[#BA3033] text-white font-bold text-sm shadow-md hover:opacity-90 transition-opacity"
+          >
+            Back to Home
+          </Link>
+        </motion.div>
+      </div>
+    );
+  }
 
   if (!playerName) {
     return <NameModal onSubmit={handleNameSubmit} />;
@@ -362,17 +413,14 @@ export function Room() {
 
       {/* Main content */}
       <main id="room__main" className="flex-1 flex flex-col items-center gap-4 px-4 py-4 max-w-3xl mx-auto w-full">
-        {/* Host controls */}
-        {isHost && (isVoting || isRevealed) && (state.phase === "voting" || state.phase === "revealed") && (
+        {/* Host controls: topic input + topic queue */}
+        {isHost && (
           <HostControls
-            phase={state.phase}
-            onReveal={reveal}
-            onNewRound={handleNewRound}
             topic={state.topic}
             onSetTopic={setTopic}
             hasTopics={hasTopics}
-            isLastTopic={isLastTopic}
-            onNextTopic={handleNextTopic}
+            topics={state.topics}
+            onSetTopics={setTopics}
           />
         )}
 
@@ -385,20 +433,20 @@ export function Room() {
           />
         )}
 
-        {/* Topic input for host */}
-        {isHost && (isWaiting || isVoting) && (
-          <TopicInput
-            topics={state.topics}
-            onSetTopics={setTopics}
-          />
-        )}
-
         {/* Table */}
         <Table
           players={tablePlayers}
           currentUserId={playerId}
           revealedVotes={revealedVotes}
           voteVersions={voteVersions}
+          isHost={isHost}
+          onReveal={reveal}
+          onNewRound={handleNewRound}
+          onNextTopic={handleNextTopic}
+          onKick={isHost ? handleKickClick : undefined}
+          hasTopics={hasTopics}
+          isLastTopic={isLastTopic}
+          phase={state.phase}
         />
 
         {/* Results */}
@@ -476,6 +524,43 @@ export function Room() {
           </div>
         </div>
       )}
+
+      {/* Kick confirmation modal */}
+      <AnimatePresence>
+        {kickConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+            <motion.div
+              className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-xs flex flex-col gap-4 text-center"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            >
+              <p className="text-sm font-semibold text-gray-700">
+                Remove <span className="text-[#BA3033]">{kickConfirm.name}</span> from the room?
+              </p>
+              <div className="flex gap-3">
+                <motion.button
+                  className="flex-1 px-4 py-2 rounded-xl bg-gray-100 text-gray-600 font-semibold text-sm cursor-pointer hover:bg-gray-200 transition-colors"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleKickCancel}
+                >
+                  Cancel
+                </motion.button>
+                <motion.button
+                  className="flex-1 px-4 py-2 rounded-xl bg-red-500 text-white font-semibold text-sm cursor-pointer hover:bg-red-600 transition-colors shadow-md"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleKickConfirm}
+                >
+                  Remove
+                </motion.button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Disconnected overlay */}
       {!isConnected && state && (

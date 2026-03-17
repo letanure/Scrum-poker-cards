@@ -40,7 +40,9 @@ export function TopicBar({
           disabled={isFirst || isDone}
           aria-label="Previous topic"
         >
-          &#9664;
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
         </motion.button>
       )}
 
@@ -78,7 +80,9 @@ export function TopicBar({
           disabled={isLast || isDone}
           aria-label="Next topic"
         >
-          &#9654;
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+            <path d="M9 18l6-6-6-6" />
+          </svg>
         </motion.button>
       )}
     </motion.div>
