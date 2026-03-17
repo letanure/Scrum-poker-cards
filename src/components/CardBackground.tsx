@@ -4,12 +4,12 @@ import { Card } from "./Card.tsx";
 
 const CARD_KEYS = Object.keys(CARD_MAP);
 
-const MIN_FLIP_INTERVAL = 3000;
-const MAX_FLIP_INTERVAL = 8000;
+const MIN_FLIP_INTERVAL = 6000;
+const MAX_FLIP_INTERVAL = 15000;
 const MIN_ROTATION = -25;
 const MAX_ROTATION = 25;
 const MIN_OPACITY = 0.15;
-const MAX_OPACITY = 0.3;
+const MAX_OPACITY = 0.35;
 
 interface CardPlacement {
   key: string;
@@ -21,17 +21,59 @@ interface CardPlacement {
   initialDelay: number;
 }
 
+function randomInRange(min: number, max: number): number {
+  return min + Math.random() * (max - min);
+}
+
+const CARD_W = 12;
+const CARD_H = 16;
+
+function overlaps(
+  x: number,
+  y: number,
+  placed: ReadonlyArray<{ x: number; y: number }>,
+): boolean {
+  return placed.some(
+    (p) => Math.abs(p.x - x) < CARD_W && Math.abs(p.y - y) < CARD_H,
+  );
+}
+
 function generatePlacements(): ReadonlyArray<CardPlacement> {
-  return CARD_KEYS.map((key) => ({
-    key,
-    x: Math.random() * 90 + 5,
-    y: Math.random() * 85 + 5,
-    rotation: MIN_ROTATION + Math.random() * (MAX_ROTATION - MIN_ROTATION),
-    opacity: MIN_OPACITY + Math.random() * (MAX_OPACITY - MIN_OPACITY),
-    flipInterval:
-      MIN_FLIP_INTERVAL + Math.random() * (MAX_FLIP_INTERVAL - MIN_FLIP_INTERVAL),
-    initialDelay: Math.random() * 5000,
-  }));
+  const half = Math.ceil(CARD_KEYS.length / 2);
+  const placed: Array<{ x: number; y: number }> = [];
+  const shuffled = [...CARD_KEYS].sort(() => Math.random() - 0.5);
+
+  return shuffled.map((key, index) => {
+    const isLeft = index < half;
+
+    let x: number;
+    let y: number;
+    let attempts = 0;
+    let found = false;
+    do {
+      x = isLeft ? randomInRange(6, 26) : randomInRange(74, 94);
+      y = randomInRange(8, 85);
+      attempts++;
+      if (!overlaps(x, y, placed)) {
+        found = true;
+        break;
+      }
+    } while (attempts < 80);
+
+    if (!found) return null;
+
+    placed.push({ x, y });
+
+    return {
+      key,
+      x,
+      y,
+      rotation: randomInRange(MIN_ROTATION, MAX_ROTATION),
+      opacity: randomInRange(MIN_OPACITY, MAX_OPACITY),
+      flipInterval: randomInRange(MIN_FLIP_INTERVAL, MAX_FLIP_INTERVAL),
+      initialDelay: randomInRange(1000, 10000),
+    };
+  }).filter((p): p is CardPlacement => p !== null);
 }
 
 function BackgroundCard({ placement }: { placement: CardPlacement }) {
@@ -72,9 +114,9 @@ function BackgroundCard({ placement }: { placement: CardPlacement }) {
         value={placement.key}
         isFlipped={isFlipped}
         isSelected={false}
-        size="md"
-        widthOverride={70}
-        heightOverride={98}
+        size="lg"
+        widthOverride={100}
+        heightOverride={140}
       />
     </div>
   );
