@@ -10,6 +10,9 @@ import type {
   SetTopicMessage,
   ConfigureMessage,
   ExplainMessage,
+  SetTopicsMessage,
+  NextTopicMessage,
+  PrevTopicMessage,
   ConfidenceLevel,
 } from "../lib/protocol.ts";
 
@@ -138,6 +141,17 @@ export function usePokerRoom(roomId: string, playerName: string) {
           });
           break;
         }
+        case "topics-updated": {
+          setState((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              topics: message.topics,
+              currentTopicIndex: message.currentTopicIndex,
+            };
+          });
+          break;
+        }
         case "error": {
           console.error("[PokerRoom] Server error:", message.message);
           break;
@@ -202,6 +216,24 @@ export function usePokerRoom(roomId: string, playerName: string) {
     [socket],
   );
 
+  const setTopics = useCallback(
+    (topics: string[]) => {
+      const msg: SetTopicsMessage = { type: "set-topics", topics };
+      socket.send(JSON.stringify(msg));
+    },
+    [socket],
+  );
+
+  const nextTopic = useCallback(() => {
+    const msg: NextTopicMessage = { type: "next-topic" };
+    socket.send(JSON.stringify(msg));
+  }, [socket]);
+
+  const prevTopic = useCallback(() => {
+    const msg: PrevTopicMessage = { type: "prev-topic" };
+    socket.send(JSON.stringify(msg));
+  }, [socket]);
+
   return {
     state,
     isConnected,
@@ -211,6 +243,9 @@ export function usePokerRoom(roomId: string, playerName: string) {
     setTopic,
     configure,
     explain,
+    setTopics,
+    nextTopic,
+    prevTopic,
     playerId,
     voteVersions,
   };

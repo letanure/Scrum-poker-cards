@@ -31,6 +31,13 @@ export type RoomConfig = {
   autoReveal: boolean;
 };
 
+// Topic result
+export type TopicResult = {
+  topic: string;
+  votes: Record<string, string>;
+  average: number | null;
+};
+
 // Room state
 export type RoomState = {
   phase: RoomPhase;
@@ -42,6 +49,9 @@ export type RoomState = {
   votedPlayerIds: string[];
   config: RoomConfig;
   explanations: Record<string, string>;
+  topics: string[];
+  currentTopicIndex: number;
+  topicResults: Record<number, TopicResult>;
 };
 
 // --- Client → Server messages ---
@@ -82,6 +92,19 @@ export type ExplainMessage = {
   text: string;
 };
 
+export type SetTopicsMessage = {
+  type: "set-topics";
+  topics: string[];
+};
+
+export type NextTopicMessage = {
+  type: "next-topic";
+};
+
+export type PrevTopicMessage = {
+  type: "prev-topic";
+};
+
 export type ClientMessage =
   | JoinMessage
   | VoteMessage
@@ -89,7 +112,10 @@ export type ClientMessage =
   | NewRoundMessage
   | SetTopicMessage
   | ConfigureMessage
-  | ExplainMessage;
+  | ExplainMessage
+  | SetTopicsMessage
+  | NextTopicMessage
+  | PrevTopicMessage;
 
 // --- Server → Client messages ---
 
@@ -135,6 +161,12 @@ export type ExplanationMessage = {
   text: string;
 };
 
+export type TopicsUpdatedMessage = {
+  type: "topics-updated";
+  topics: string[];
+  currentTopicIndex: number;
+};
+
 export type ServerMessage =
   | SyncMessage
   | PlayerJoinedMessage
@@ -143,4 +175,5 @@ export type ServerMessage =
   | RevealedMessage
   | NewRoundServerMessage
   | ErrorMessage
-  | ExplanationMessage;
+  | ExplanationMessage
+  | TopicsUpdatedMessage;

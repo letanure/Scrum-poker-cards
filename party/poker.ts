@@ -35,6 +35,12 @@ interface RoomConfig {
   autoReveal: boolean;
 }
 
+interface TopicResult {
+  topic: string;
+  votes: Record<string, string>;
+  average: number | null;
+}
+
 interface SerializedRoomState {
   phase: Phase;
   hostId: string;
@@ -45,6 +51,9 @@ interface SerializedRoomState {
   votedPlayerIds: string[];
   config: RoomConfig;
   explanations: Record<string, string>;
+  topics: string[];
+  currentTopicIndex: number;
+  topicResults: Record<number, TopicResult>;
 }
 
 // Client → Server messages
@@ -84,6 +93,19 @@ interface ExplainMessage {
   text: string;
 }
 
+interface SetTopicsMessage {
+  type: "set-topics";
+  topics: string[];
+}
+
+interface NextTopicMessage {
+  type: "next-topic";
+}
+
+interface PrevTopicMessage {
+  type: "prev-topic";
+}
+
 type ClientMessage =
   | JoinMessage
   | VoteMessage
@@ -91,7 +113,10 @@ type ClientMessage =
   | NewRoundMessage
   | SetTopicMessage
   | ConfigureMessage
-  | ExplainMessage;
+  | ExplainMessage
+  | SetTopicsMessage
+  | NextTopicMessage
+  | PrevTopicMessage;
 
 // Server → Client messages
 interface SyncMessage {
@@ -136,6 +161,12 @@ interface ExplanationMessage {
   text: string;
 }
 
+interface TopicsUpdatedMessage {
+  type: "topics-updated";
+  topics: string[];
+  currentTopicIndex: number;
+}
+
 type ServerMessage =
   | SyncMessage
   | PlayerJoinedMessage
@@ -144,7 +175,8 @@ type ServerMessage =
   | RevealedMessage
   | NewRoundBroadcastMessage
   | ErrorMessage
-  | ExplanationMessage;
+  | ExplanationMessage
+  | TopicsUpdatedMessage;
 
 function serialize(message: ServerMessage): string {
   return JSON.stringify(message);
@@ -162,6 +194,9 @@ export default class PokerServer implements Party.Server {
     cards: ["1", "2", "3", "5", "8", "13", "20", "40", "100", "infinity", "?", "coffee", "brownie", "yak"],
     autoReveal: false,
   };
+  private topics: string[] = [];
+  private currentTopicIndex = 0;
+  private topicResults: Map<number, TopicResult> = new Map();
   private colorIndex = 0;
 
   constructor(readonly room: Party.Room) {}
@@ -204,16 +239,28 @@ export default class PokerServer implements Party.Server {
       }
     }
 
+    const topicResults: Record<number, TopicResult> = {};
+    for (const [index, result] of this.topicResults.entries()) {
+      topicResults[index] = result;
+    }
+
+    const topic = this.topics.length > 0 && this.currentTopicIndex < this.topics.length
+      ? this.topics[this.currentTopicIndex]
+      : this.topic;
+
     return {
       phase: this.phase,
       hostId: this.hostId,
-      topic: this.topic,
+      topic,
       players,
       votes: isRevealed ? votes : {},
       confidences: isRevealed ? confidences : {},
       votedPlayerIds,
       config: this.config,
       explanations,
+      topics: this.topics,
+      currentTopicIndex: this.currentTopicIndex,
+      topicResults,
     };
   }
 
@@ -339,6 +386,12 @@ export default class PokerServer implements Party.Server {
       return;
     }
 
+    // If topics exist and not at the end, auto-advance to next topic
+    if (this.topics.length > 0 && this.currentTopicIndex < this.topics.length - 1) {
+      this.handleNextTopic(sender);
+      return;
+    }
+
     this.votes.clear();
     this.confidences.clear();
     this.explanations.clear();
@@ -384,6 +437,122 @@ export default class PokerServer implements Party.Server {
     this.room.broadcast(
       serialize({ type: "explanation", playerId: sender.id, text: msg.text })
     );
+  }
+
+  private computeVoteAverage(): number | null {
+    const numericVotes: number[] = [];
+    for (const value of this.votes.values()) {
+      const parsed = parseFloat(value);
+      if (!isNaN(parsed) && isFinite(parsed)) {
+        numericVotes.push(parsed);
+      }
+    }
+    if (numericVotes.length === 0) return null;
+    const sum = numericVotes.reduce((a, b) => a + b, 0);
+    return Math.round((sum / numericVotes.length) * 100) / 100;
+  }
+
+  private saveCurrentTopicResult(): void {
+    if (this.topics.length === 0) return;
+    const currentTopic = this.topics[this.currentTopicIndex] ?? "";
+    const votes: Record<string, string> = {};
+    for (const [playerId, value] of this.votes.entries()) {
+      votes[playerId] = value;
+    }
+    this.topicResults.set(this.currentTopicIndex, {
+      topic: currentTopic,
+      votes,
+      average: this.computeVoteAverage(),
+    });
+  }
+
+  private clearRoundState(): void {
+    this.votes.clear();
+    this.confidences.clear();
+    this.explanations.clear();
+    for (const player of this.players.values()) {
+      player.hasVoted = false;
+    }
+    this.phase = PHASES.voting;
+  }
+
+  private broadcastTopicsUpdated(): void {
+    this.room.broadcast(
+      serialize({
+        type: "topics-updated",
+        topics: this.topics,
+        currentTopicIndex: this.currentTopicIndex,
+      })
+    );
+  }
+
+  private handleSetTopics(sender: Party.Connection, msg: SetTopicsMessage): void {
+    if (!this.isHost(sender.id)) {
+      this.sendError(sender, "Only the host can set topics");
+      return;
+    }
+
+    this.topics = msg.topics;
+    this.currentTopicIndex = 0;
+    if (this.topics.length > 0) {
+      this.topic = this.topics[0];
+    }
+    this.broadcastSync();
+  }
+
+  private handleNextTopic(sender: Party.Connection): void {
+    if (!this.isHost(sender.id)) {
+      this.sendError(sender, "Only the host can advance topics");
+      return;
+    }
+
+    if (this.topics.length === 0) {
+      this.sendError(sender, "No topics have been set");
+      return;
+    }
+
+    this.saveCurrentTopicResult();
+    this.currentTopicIndex++;
+
+    if (this.currentTopicIndex >= this.topics.length) {
+      this.currentTopicIndex = this.topics.length - 1;
+      this.sendError(sender, "Already at the last topic");
+      return;
+    }
+
+    this.topic = this.topics[this.currentTopicIndex];
+    this.clearRoundState();
+
+    this.room.broadcast(
+      serialize({ type: "new-round", topic: this.topic })
+    );
+    this.broadcastTopicsUpdated();
+  }
+
+  private handlePrevTopic(sender: Party.Connection): void {
+    if (!this.isHost(sender.id)) {
+      this.sendError(sender, "Only the host can navigate topics");
+      return;
+    }
+
+    if (this.topics.length === 0) {
+      this.sendError(sender, "No topics have been set");
+      return;
+    }
+
+    if (this.currentTopicIndex <= 0) {
+      this.sendError(sender, "Already at the first topic");
+      return;
+    }
+
+    this.currentTopicIndex--;
+    this.topic = this.topics[this.currentTopicIndex];
+    this.clearRoundState();
+
+    this.room.broadcast(
+      serialize({ type: "new-round", topic: this.topic })
+    );
+    this.broadcastTopicsUpdated();
   }
 
   private handleConfigure(
@@ -437,6 +606,15 @@ export default class PokerServer implements Party.Server {
         break;
       case "explain":
         this.handleExplain(sender, parsed);
+        break;
+      case "set-topics":
+        this.handleSetTopics(sender, parsed);
+        break;
+      case "next-topic":
+        this.handleNextTopic(sender);
+        break;
+      case "prev-topic":
+        this.handlePrevTopic(sender);
         break;
       default:
         this.sendError(sender, "Unknown message type");

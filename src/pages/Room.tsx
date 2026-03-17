@@ -7,6 +7,9 @@ import { CardHand } from "../components/CardHand.tsx";
 import { Results } from "../components/Results.tsx";
 import { HostControls } from "../components/HostControls.tsx";
 import { ShareButton } from "../components/ShareButton.tsx";
+import { TopicBar } from "../components/TopicBar.tsx";
+import { TopicInput } from "../components/TopicInput.tsx";
+import { TopicSummary } from "../components/TopicSummary.tsx";
 import { PRESETS, PRESET_LABELS, type PresetName } from "../lib/cards.ts";
 import { CONFIDENCE_LEVELS, type ConfidenceLevel } from "../lib/protocol.ts";
 
@@ -231,6 +234,9 @@ export function Room() {
     setTopic,
     configure,
     explain,
+    setTopics,
+    nextTopic,
+    prevTopic,
     playerId,
     voteVersions,
   } = usePokerRoom(effectiveRoomId, effectiveName);
@@ -269,6 +275,12 @@ export function Room() {
     newRound();
   }, [newRound]);
 
+  const handleNextTopic = useCallback(() => {
+    setSelectedCard(null);
+    setSelectedConfidence(CONFIDENCE_LEVELS.confident);
+    nextTopic();
+  }, [nextTopic]);
+
   if (!playerName) {
     return <NameModal onSubmit={handleNameSubmit} />;
   }
@@ -306,6 +318,13 @@ export function Room() {
 
   const revealedVotes = isRevealed ? state.votes : null;
 
+  const hasTopics = state.topics.length > 0;
+  const isLastTopic = state.currentTopicIndex >= state.topics.length - 1;
+  const allTopicsDone =
+    hasTopics &&
+    state.currentTopicIndex >= state.topics.length &&
+    isRevealed;
+
   return (
     <div id="room" className="min-h-screen bg-gradient-to-br from-[#F8ABAA]/20 via-white to-[#F0649B]/10 flex flex-col">
       {/* Top bar */}
@@ -328,6 +347,19 @@ export function Room() {
         </div>
       </header>
 
+      {/* Topic bar */}
+      {hasTopics && (
+        <div className="px-4 pt-2 max-w-3xl mx-auto w-full">
+          <TopicBar
+            topics={state.topics}
+            currentTopicIndex={state.currentTopicIndex}
+            isHost={isHost}
+            onPrev={prevTopic}
+            onNext={handleNextTopic}
+          />
+        </div>
+      )}
+
       {/* Main content */}
       <main id="room__main" className="flex-1 flex flex-col items-center gap-4 px-4 py-4 max-w-3xl mx-auto w-full">
         {/* Host controls */}
@@ -338,6 +370,9 @@ export function Room() {
             onNewRound={handleNewRound}
             topic={state.topic}
             onSetTopic={setTopic}
+            hasTopics={hasTopics}
+            isLastTopic={isLastTopic}
+            onNextTopic={handleNextTopic}
           />
         )}
 
@@ -347,6 +382,14 @@ export function Room() {
             currentCards={state.config.cards}
             autoReveal={state.config.autoReveal}
             onConfigure={configure}
+          />
+        )}
+
+        {/* Topic input for host */}
+        {isHost && (isWaiting || isVoting) && (
+          <TopicInput
+            topics={state.topics}
+            onSetTopics={setTopics}
           />
         )}
 
@@ -371,6 +414,14 @@ export function Room() {
             />
           )}
         </AnimatePresence>
+
+        {/* Topic summary when all topics are done */}
+        {allTopicsDone && (
+          <TopicSummary
+            topicResults={state.topicResults}
+            players={state.players}
+          />
+        )}
 
         {/* Card description shout — bubbles up from the bottom */}
         <AnimatePresence>

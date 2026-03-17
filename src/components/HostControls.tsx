@@ -12,6 +12,9 @@ interface HostControlsProps {
   onNewRound: () => void;
   topic: string;
   onSetTopic: (topic: string) => void;
+  hasTopics?: boolean;
+  isLastTopic?: boolean;
+  onNextTopic?: () => void;
 }
 
 export function HostControls({
@@ -20,6 +23,9 @@ export function HostControls({
   onNewRound,
   topic,
   onSetTopic,
+  hasTopics = false,
+  isLastTopic = false,
+  onNextTopic,
 }: HostControlsProps) {
   const [localTopic, setLocalTopic] = useState(topic);
 
@@ -78,7 +84,21 @@ export function HostControls({
         </motion.button>
       )}
 
-      {phase === REVEALED_PHASE && (
+      {phase === REVEALED_PHASE && hasTopics && onNextTopic && (
+        <motion.button
+          className="px-6 py-2 rounded-xl bg-[#7F6CB1] text-white font-semibold text-sm shadow-md hover:shadow-lg cursor-pointer whitespace-nowrap"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={isLastTopic ? onNextTopic : onNextTopic}
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ type: "spring", stiffness: 400, damping: 20 }}
+        >
+          {isLastTopic ? "Finish & Summary" : "Next Story \u25B6"}
+        </motion.button>
+      )}
+
+      {phase === REVEALED_PHASE && !hasTopics && (
         <motion.button
           className="px-6 py-2 rounded-xl bg-[#7F6CB1] text-white font-semibold text-sm shadow-md hover:shadow-lg cursor-pointer whitespace-nowrap"
           whileHover={{ scale: 1.05 }}
