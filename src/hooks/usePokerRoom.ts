@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import usePartySocket from "partysocket/react";
 import type {
   RoomState,
@@ -36,6 +36,8 @@ export function usePokerRoom(roomId: string, playerName: string) {
     return false;
   });
 
+  const tabIdRef = useRef(`${Date.now()}-${Math.random()}`);
+
   const socket = usePartySocket({
     host: PARTYKIT_HOST,
     room: roomId,
@@ -45,9 +47,17 @@ export function usePokerRoom(roomId: string, playerName: string) {
       }
 
       setIsConnected(true);
+      setReplaced(false);
 
       const joinMsg: JoinMessage = { type: "join", name: playerName };
       socket.send(JSON.stringify(joinMsg));
+
+      // Tell other tabs this one is now active
+      try {
+        const channel = new BroadcastChannel(`poker-room-${roomId}`);
+        channel.postMessage({ type: "tab-active", tabId: tabIdRef.current });
+        channel.close();
+      } catch { /* BroadcastChannel not supported */ }
     },
     onMessage(event) {
       const message = JSON.parse(String(event.data)) as ServerMessage;
@@ -164,7 +174,9 @@ export function usePokerRoom(roomId: string, playerName: string) {
           break;
         }
         case "replaced": {
+          // Server-side replacement (fallback)
           setReplaced(true);
+          setIsConnected(false);
           break;
         }
         case "kicked": {
@@ -198,27 +210,46 @@ export function usePokerRoom(roomId: string, playerName: string) {
     setPlayerId(socket.id);
   }
 
-  // Active tab always takes the connection
+  // BroadcastChannel: coordinate between tabs
+  useEffect(() => {
+    if (kicked) return;
+
+    const channel = new BroadcastChannel(`poker-room-${roomId}`);
+
+    channel.onmessage = (event: MessageEvent) => {
+      const data = event.data as { type: string; tabId: string };
+      if (data.type === "tab-active" && data.tabId !== tabIdRef.current) {
+        // Another tab became active — close our socket
+        setReplaced(true);
+        setIsConnected(false);
+        socket.close();
+      }
+    };
+
+    return () => channel.close();
+  }, [roomId, kicked, socket]);
+
+  // On focus: reclaim the connection
   useEffect(() => {
     if (kicked) return;
 
     const handleFocus = () => {
-      if (replaced) {
-        setReplaced(false);
-      }
-      // Reconnect — server will handle replacing the other tab
-      if (socket.readyState !== WebSocket.OPEN) {
-        socket.reconnect();
-      } else {
-        // Already open but might be stale — re-send join to reclaim
-        const joinMsg: JoinMessage = { type: "join", name: playerName };
-        socket.send(JSON.stringify(joinMsg));
-      }
+      if (!replaced) return;
+      setReplaced(false);
+
+      // Tell other tabs we're taking over
+      try {
+        const channel = new BroadcastChannel(`poker-room-${roomId}`);
+        channel.postMessage({ type: "tab-active", tabId: tabIdRef.current });
+        channel.close();
+      } catch { /* ignore */ }
+
+      socket.reconnect();
     };
 
     window.addEventListener("focus", handleFocus);
     return () => window.removeEventListener("focus", handleFocus);
-  }, [socket, replaced, kicked, playerName]);
+  }, [socket, replaced, kicked, roomId]);
 
   const vote = useCallback(
     (value: string, confidence: ConfidenceLevel) => {

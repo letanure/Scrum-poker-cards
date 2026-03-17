@@ -271,7 +271,7 @@ function RoomInner({
     playerId,
     voteVersions,
     kicked,
-    replaced: _replaced,
+    replaced,
     kick,
     transferHost,
   } = usePokerRoom(roomId, playerName);
@@ -388,7 +388,22 @@ function RoomInner({
     );
   }
 
-  // Replaced tab — will auto-reconnect on focus, no action needed
+  if (replaced) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#F8ABAA]/20 via-white to-[#F0649B]/10 flex items-center justify-center px-4">
+        <motion.div
+          className="flex flex-col items-center gap-3 text-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.6 }}
+        >
+          <span className="text-2xl">💤</span>
+          <p className="text-sm text-gray-400">
+            Active in another tab — click here to switch
+          </p>
+        </motion.div>
+      </div>
+    );
+  }
 
   if (!state || !isConnected) {
     return (
