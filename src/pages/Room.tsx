@@ -384,9 +384,9 @@ export function Room() {
           <h1 className="text-lg font-bold text-[#BA3033] font-[Nunito]">
             Scrum Poker
           </h1>
-          {state.topic && (
+          {state.topic && !hasTopics && (
             <span className="text-sm text-gray-500 truncate max-w-[200px]">
-              {state.topic}
+              — {state.topic}
             </span>
           )}
         </div>
