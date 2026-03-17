@@ -21,12 +21,18 @@ import type {
 const PARTYKIT_HOST =
   import.meta.env.VITE_PARTYKIT_HOST ?? "localhost:1999";
 
+function getOrCreateStableId(): string {
+  const existing = localStorage.getItem("poker-player-id");
+  if (existing) return existing;
+  const id = crypto.randomUUID();
+  localStorage.setItem("poker-player-id", id);
+  return id;
+}
+
 export function usePokerRoom(roomId: string, playerName: string) {
   const [state, setState] = useState<RoomState | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [voteVersions, setVoteVersions] = useState<Record<string, number>>({});
-  const [playerId, setPlayerId] = useState("");
-  const [replaced, setReplaced] = useState(false);
   const [kicked, setKicked] = useState(() => {
     const kickedRooms = localStorage.getItem("poker-kicked-rooms");
     if (kickedRooms) {
@@ -36,20 +42,17 @@ export function usePokerRoom(roomId: string, playerName: string) {
     return false;
   });
 
+  const stableId = useRef(getOrCreateStableId()).current;
   const tabIdRef = useRef(`${Date.now()}-${Math.random()}`);
+  const pausedByTabRef = useRef(false);
 
   const socket = usePartySocket({
     host: PARTYKIT_HOST,
     room: roomId,
     onOpen() {
-      if (socket.id) {
-        setPlayerId(socket.id);
-      }
-
       setIsConnected(true);
-      setReplaced(false);
 
-      const joinMsg: JoinMessage = { type: "join", name: playerName };
+      const joinMsg: JoinMessage = { type: "join", name: playerName, stableId };
       socket.send(JSON.stringify(joinMsg));
 
       // Tell other tabs this one is now active
@@ -173,12 +176,6 @@ export function usePokerRoom(roomId: string, playerName: string) {
           });
           break;
         }
-        case "replaced": {
-          // Server-side replacement (fallback)
-          setReplaced(true);
-          setIsConnected(false);
-          break;
-        }
         case "kicked": {
           setKicked(true);
           try {
@@ -205,11 +202,6 @@ export function usePokerRoom(roomId: string, playerName: string) {
     },
   });
 
-  // Ensure playerId is captured even if onOpen ran before state setter
-  if (socket.id && !playerId) {
-    setPlayerId(socket.id);
-  }
-
   // BroadcastChannel: coordinate between tabs
   useEffect(() => {
     if (kicked) return;
@@ -220,7 +212,7 @@ export function usePokerRoom(roomId: string, playerName: string) {
       const data = event.data as { type: string; tabId: string };
       if (data.type === "tab-active" && data.tabId !== tabIdRef.current) {
         // Another tab became active — close our socket
-        setReplaced(true);
+        pausedByTabRef.current = true;
         setIsConnected(false);
         socket.close();
       }
@@ -229,13 +221,13 @@ export function usePokerRoom(roomId: string, playerName: string) {
     return () => channel.close();
   }, [roomId, kicked, socket]);
 
-  // On focus: reclaim the connection
+  // On focus: reclaim the connection if paused by another tab
   useEffect(() => {
     if (kicked) return;
 
     const handleFocus = () => {
-      if (!replaced) return;
-      setReplaced(false);
+      if (!pausedByTabRef.current) return;
+      pausedByTabRef.current = false;
 
       // Tell other tabs we're taking over
       try {
@@ -249,7 +241,7 @@ export function usePokerRoom(roomId: string, playerName: string) {
 
     window.addEventListener("focus", handleFocus);
     return () => window.removeEventListener("focus", handleFocus);
-  }, [socket, replaced, kicked, roomId]);
+  }, [socket, kicked, roomId]);
 
   const vote = useCallback(
     (value: string, confidence: ConfidenceLevel) => {
@@ -342,10 +334,9 @@ export function usePokerRoom(roomId: string, playerName: string) {
     setTopics,
     nextTopic,
     prevTopic,
-    playerId,
+    playerId: stableId,
     voteVersions,
     kicked,
-    replaced,
     kick,
     transferHost,
   };

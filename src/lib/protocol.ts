@@ -59,6 +59,7 @@ export type RoomState = {
 export type JoinMessage = {
   type: "join";
   name: string;
+  stableId: string;
 };
 
 export type VoteMessage = {
@@ -183,10 +184,6 @@ export type KickedMessage = {
   type: "kicked";
 };
 
-export type ReplacedMessage = {
-  type: "replaced";
-};
-
 export type ServerMessage =
   | SyncMessage
   | PlayerJoinedMessage
@@ -197,5 +194,4 @@ export type ServerMessage =
   | ErrorMessage
   | ExplanationMessage
   | TopicsUpdatedMessage
-  | KickedMessage
-  | ReplacedMessage;
+  | KickedMessage;

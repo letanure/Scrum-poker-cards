@@ -60,6 +60,7 @@ interface SerializedRoomState {
 interface JoinMessage {
   type: "join";
   name: string;
+  stableId: string;
 }
 
 interface VoteMessage {
@@ -187,8 +188,7 @@ type ServerMessage =
   | ErrorMessage
   | ExplanationMessage
   | TopicsUpdatedMessage
-  | KickedMessage
-  | { type: "replaced" };
+  | KickedMessage;
 
 function serialize(message: ServerMessage): string {
   return JSON.stringify(message);
@@ -196,8 +196,9 @@ function serialize(message: ServerMessage): string {
 
 export default class PokerServer implements Party.Server {
   private phase: Phase = PHASES.waiting;
-  private hostId = "";
+  private hostId = ""; // stableId of the host
   private topic = "";
+  /** Players keyed by stableId */
   private players: Map<string, Player> = new Map();
   private votes: Map<string, string> = new Map();
   private confidences: Map<string, string> = new Map();
@@ -209,7 +210,11 @@ export default class PokerServer implements Party.Server {
   private topics: string[] = [];
   private currentTopicIndex = 0;
   private topicResults: Map<number, TopicResult> = new Map();
-  private pendingDisconnects: Map<string, { name: string; timer: ReturnType<typeof setTimeout> }> = new Map();
+
+  /** Maps stableId → current connectionId */
+  private connectionMap: Map<string, string> = new Map();
+  /** Pending disconnect timers keyed by stableId */
+  private pendingDisconnects: Map<string, { timer: ReturnType<typeof setTimeout> }> = new Map();
 
   constructor(readonly room: Party.Room) {}
 
@@ -222,6 +227,24 @@ export default class PokerServer implements Party.Server {
     return PLAYER_COLORS[index];
   }
 
+  /** Reverse lookup: find stableId for a given connectionId */
+  private getStableIdByConnection(connId: string): string | null {
+    for (const [stableId, cId] of this.connectionMap.entries()) {
+      if (cId === connId) return stableId;
+    }
+    return null;
+  }
+
+  /** Find the active Party.Connection for a stableId */
+  private getConnectionForPlayer(stableId: string): Party.Connection | null {
+    const connId = this.connectionMap.get(stableId);
+    if (!connId) return null;
+    for (const conn of this.room.getConnections()) {
+      if (conn.id === connId) return conn;
+    }
+    return null;
+  }
+
   private serializeState(): SerializedRoomState {
     const players: Player[] = [];
     for (const player of this.players.values()) {
@@ -229,19 +252,19 @@ export default class PokerServer implements Party.Server {
     }
 
     const votes: Record<string, string> = {};
-    for (const [playerId, value] of this.votes.entries()) {
-      votes[playerId] = value;
+    for (const [stableId, value] of this.votes.entries()) {
+      votes[stableId] = value;
     }
 
     const confidences: Record<string, string> = {};
-    for (const [playerId, value] of this.confidences.entries()) {
-      confidences[playerId] = value;
+    for (const [stableId, value] of this.confidences.entries()) {
+      confidences[stableId] = value;
     }
 
     const votedPlayerIds: string[] = [];
-    for (const [playerId, player] of this.players.entries()) {
+    for (const [stableId, player] of this.players.entries()) {
       if (player.hasVoted) {
-        votedPlayerIds.push(playerId);
+        votedPlayerIds.push(stableId);
       }
     }
 
@@ -249,8 +272,8 @@ export default class PokerServer implements Party.Server {
 
     const explanations: Record<string, string> = {};
     if (isRevealed) {
-      for (const [playerId, text] of this.explanations.entries()) {
-        explanations[playerId] = text;
+      for (const [stableId, text] of this.explanations.entries()) {
+        explanations[stableId] = text;
       }
     }
 
@@ -288,8 +311,8 @@ export default class PokerServer implements Party.Server {
     conn.send(serialize({ type: "error", message }));
   }
 
-  private isHost(connectionId: string): boolean {
-    return this.hostId === connectionId;
+  private isHost(stableId: string): boolean {
+    return this.hostId === stableId;
   }
 
   private promoteNextHost(): void {
@@ -318,21 +341,23 @@ export default class PokerServer implements Party.Server {
     this.phase = PHASES.revealed;
 
     const votes: Record<string, string> = {};
-    for (const [playerId, value] of this.votes.entries()) {
-      votes[playerId] = value;
+    for (const [stableId, value] of this.votes.entries()) {
+      votes[stableId] = value;
     }
 
     const confidences: Record<string, string> = {};
-    for (const [playerId, value] of this.confidences.entries()) {
-      confidences[playerId] = value;
+    for (const [stableId, value] of this.confidences.entries()) {
+      confidences[stableId] = value;
     }
 
     this.room.broadcast(serialize({ type: "revealed", votes, confidences }));
   }
 
-  private deduplicateName(name: string): string {
+  private deduplicateName(name: string, excludeStableId?: string): string {
     const existingNames = new Set(
-      [...this.players.values()].map((p) => p.name)
+      [...this.players.entries()]
+        .filter(([id]) => id !== excludeStableId)
+        .map(([, p]) => p.name)
     );
     if (!existingNames.has(name)) return name;
     let suffix = 2;
@@ -343,110 +368,58 @@ export default class PokerServer implements Party.Server {
   }
 
   private handleJoin(sender: Party.Connection, msg: JoinMessage): void {
-    // Check if same name already exists — replace the old connection
-    let existingId: string | null = null;
-    let existingPlayer: Player | null = null;
-    for (const [id, p] of this.players.entries()) {
-      if (p.name === msg.name && id !== sender.id) {
-        existingId = id;
-        existingPlayer = p;
-        break;
-      }
-    }
+    const stableId = msg.stableId;
+    const existingPlayer = this.players.get(stableId);
 
-    if (existingId && existingPlayer) {
-      // Take over the existing player's spot
-      const wasHost = this.hostId === existingId;
+    if (existingPlayer) {
+      // Reconnect: same stableId already exists
+      const oldConnId = this.connectionMap.get(stableId);
 
-      // Tell old connection it's been replaced, then close it
-      for (const conn of this.room.getConnections()) {
-        if (conn.id === existingId) {
-          conn.send(serialize({ type: "replaced" }));
-          conn.close();
-          break;
+      // Close old connection if still open (silently)
+      if (oldConnId && oldConnId !== sender.id) {
+        for (const conn of this.room.getConnections()) {
+          if (conn.id === oldConnId) {
+            conn.close();
+            break;
+          }
         }
       }
 
-      // Remove old entry, preserve vote state
-      const existingVote = this.votes.get(existingId);
-      const existingConfidence = this.confidences.get(existingId);
-      this.players.delete(existingId);
-      this.votes.delete(existingId);
-      this.confidences.delete(existingId);
-      this.explanations.delete(existingId);
+      // Update connection mapping
+      this.connectionMap.set(stableId, sender.id);
 
-      // Create new entry with same name/color, new ID
-      const player: Player = {
-        id: sender.id,
-        name: existingPlayer.name,
-        color: existingPlayer.color,
-        hasVoted: existingPlayer.hasVoted,
-      };
-      this.players.set(sender.id, player);
+      // Update player name if changed
+      if (existingPlayer.name !== msg.name) {
+        existingPlayer.name = msg.name;
+      }
 
-      // Restore vote if they had one
-      if (existingVote) this.votes.set(sender.id, existingVote);
-      if (existingConfidence) this.confidences.set(sender.id, existingConfidence);
+      // Cancel any pending disconnect timer
+      const pending = this.pendingDisconnects.get(stableId);
+      if (pending) {
+        clearTimeout(pending.timer);
+        this.pendingDisconnects.delete(stableId);
+      }
 
-      // Transfer host if needed
-      if (wasHost) this.hostId = sender.id;
-
-      // Send full state and broadcast sync (simpler than player-left + player-joined)
+      // Broadcast sync to everyone (updates connection mapping, no player-left/joined)
       this.broadcastSync();
       return;
-    }
-
-    // Check if this is a reconnecting player (pending disconnect with same name)
-    for (const [oldId, pending] of this.pendingDisconnects.entries()) {
-      if (pending.name === msg.name) {
-        clearTimeout(pending.timer);
-        this.pendingDisconnects.delete(oldId);
-
-        // Take over the old player's spot silently
-        const oldPlayer = this.players.get(oldId);
-        if (oldPlayer) {
-          const wasHost = this.hostId === oldId;
-          const existingVote = this.votes.get(oldId);
-          const existingConfidence = this.confidences.get(oldId);
-
-          this.players.delete(oldId);
-          this.votes.delete(oldId);
-          this.confidences.delete(oldId);
-          this.explanations.delete(oldId);
-
-          const player: Player = {
-            id: sender.id,
-            name: oldPlayer.name,
-            color: oldPlayer.color,
-            hasVoted: oldPlayer.hasVoted,
-          };
-          this.players.set(sender.id, player);
-
-          if (existingVote) this.votes.set(sender.id, existingVote);
-          if (existingConfidence) this.confidences.set(sender.id, existingConfidence);
-          if (wasHost) this.hostId = sender.id;
-
-          // Silent rejoin — no player-left or player-joined, just sync
-          this.broadcastSync();
-          return;
-        }
-      }
     }
 
     // New player
     const uniqueName = this.deduplicateName(msg.name);
     const player: Player = {
-      id: sender.id,
+      id: stableId,
       name: uniqueName,
       color: this.getColorForName(uniqueName),
       hasVoted: false,
     };
 
-    this.players.set(sender.id, player);
+    this.players.set(stableId, player);
+    this.connectionMap.set(stableId, sender.id);
 
     // First player becomes host (only if no host assigned yet)
     if (this.players.size === 1 && (this.hostId === "" || !this.players.has(this.hostId))) {
-      this.hostId = sender.id;
+      this.hostId = stableId;
       if (this.phase === PHASES.waiting) {
         this.phase = PHASES.voting;
       }
@@ -456,37 +429,45 @@ export default class PokerServer implements Party.Server {
     sender.send(serialize({ type: "sync", state: this.serializeState() }));
 
     // Broadcast player-joined to others
+    const senderConnId = sender.id;
     this.room.broadcast(
       serialize({ type: "player-joined", player }),
-      [sender.id]
+      [senderConnId]
     );
   }
 
   private handleVote(sender: Party.Connection, msg: VoteMessage): void {
+    const stableId = this.getStableIdByConnection(sender.id);
+    if (!stableId) {
+      this.sendError(sender, "You have not joined the room");
+      return;
+    }
+
     if (this.phase !== PHASES.voting) {
       this.sendError(sender, "Voting is not active");
       return;
     }
 
-    const player = this.players.get(sender.id);
+    const player = this.players.get(stableId);
     if (!player) {
       this.sendError(sender, "You have not joined the room");
       return;
     }
 
-    this.votes.set(sender.id, msg.value);
-    this.confidences.set(sender.id, msg.confidence ?? "confident");
+    this.votes.set(stableId, msg.value);
+    this.confidences.set(stableId, msg.confidence ?? "confident");
     player.hasVoted = true;
 
     this.room.broadcast(
-      serialize({ type: "player-voted", playerId: sender.id })
+      serialize({ type: "player-voted", playerId: stableId })
     );
 
     this.checkAutoReveal();
   }
 
   private handleReveal(sender: Party.Connection): void {
-    if (!this.isHost(sender.id)) {
+    const stableId = this.getStableIdByConnection(sender.id);
+    if (!stableId || !this.isHost(stableId)) {
       this.sendError(sender, "Only the host can reveal votes");
       return;
     }
@@ -500,7 +481,8 @@ export default class PokerServer implements Party.Server {
   }
 
   private handleNewRound(sender: Party.Connection, msg: NewRoundMessage): void {
-    if (!this.isHost(sender.id)) {
+    const stableId = this.getStableIdByConnection(sender.id);
+    if (!stableId || !this.isHost(stableId)) {
       this.sendError(sender, "Only the host can start a new round");
       return;
     }
@@ -530,7 +512,8 @@ export default class PokerServer implements Party.Server {
   }
 
   private handleSetTopic(sender: Party.Connection, msg: SetTopicMessage): void {
-    if (!this.isHost(sender.id)) {
+    const stableId = this.getStableIdByConnection(sender.id);
+    if (!stableId || !this.isHost(stableId)) {
       this.sendError(sender, "Only the host can set the topic");
       return;
     }
@@ -540,21 +523,27 @@ export default class PokerServer implements Party.Server {
   }
 
   private handleExplain(sender: Party.Connection, msg: ExplainMessage): void {
+    const stableId = this.getStableIdByConnection(sender.id);
+    if (!stableId) {
+      this.sendError(sender, "You have not joined the room");
+      return;
+    }
+
     if (this.phase !== PHASES.revealed) {
       this.sendError(sender, "Can only explain after reveal");
       return;
     }
 
-    const player = this.players.get(sender.id);
+    const player = this.players.get(stableId);
     if (!player) {
       this.sendError(sender, "You have not joined the room");
       return;
     }
 
-    this.explanations.set(sender.id, msg.text);
+    this.explanations.set(stableId, msg.text);
 
     this.room.broadcast(
-      serialize({ type: "explanation", playerId: sender.id, text: msg.text })
+      serialize({ type: "explanation", playerId: stableId, text: msg.text })
     );
   }
 
@@ -575,8 +564,8 @@ export default class PokerServer implements Party.Server {
     if (this.topics.length === 0) return;
     const currentTopic = this.topics[this.currentTopicIndex] ?? "";
     const votes: Record<string, string> = {};
-    for (const [playerId, value] of this.votes.entries()) {
-      votes[playerId] = value;
+    for (const [stableId, value] of this.votes.entries()) {
+      votes[stableId] = value;
     }
     this.topicResults.set(this.currentTopicIndex, {
       topic: currentTopic,
@@ -606,7 +595,8 @@ export default class PokerServer implements Party.Server {
   }
 
   private handleSetTopics(sender: Party.Connection, msg: SetTopicsMessage): void {
-    if (!this.isHost(sender.id)) {
+    const stableId = this.getStableIdByConnection(sender.id);
+    if (!stableId || !this.isHost(stableId)) {
       this.sendError(sender, "Only the host can set topics");
       return;
     }
@@ -620,7 +610,8 @@ export default class PokerServer implements Party.Server {
   }
 
   private handleNextTopic(sender: Party.Connection): void {
-    if (!this.isHost(sender.id)) {
+    const stableId = this.getStableIdByConnection(sender.id);
+    if (!stableId || !this.isHost(stableId)) {
       this.sendError(sender, "Only the host can advance topics");
       return;
     }
@@ -649,7 +640,8 @@ export default class PokerServer implements Party.Server {
   }
 
   private handlePrevTopic(sender: Party.Connection): void {
-    if (!this.isHost(sender.id)) {
+    const stableId = this.getStableIdByConnection(sender.id);
+    if (!stableId || !this.isHost(stableId)) {
       this.sendError(sender, "Only the host can navigate topics");
       return;
     }
@@ -675,39 +667,48 @@ export default class PokerServer implements Party.Server {
   }
 
   private handleKick(sender: Party.Connection, msg: KickMessage): void {
-    if (!this.isHost(sender.id)) {
+    const senderStableId = this.getStableIdByConnection(sender.id);
+    if (!senderStableId || !this.isHost(senderStableId)) {
       this.sendError(sender, "Only the host can kick players");
       return;
     }
 
-    if (msg.playerId === sender.id) {
+    const targetStableId = msg.playerId;
+
+    if (targetStableId === senderStableId) {
       this.sendError(sender, "You cannot kick yourself");
       return;
     }
 
-    const player = this.players.get(msg.playerId);
+    const player = this.players.get(targetStableId);
     if (!player) {
       this.sendError(sender, "Player not found");
       return;
     }
 
-    this.players.delete(msg.playerId);
-    this.votes.delete(msg.playerId);
-    this.confidences.delete(msg.playerId);
-    this.explanations.delete(msg.playerId);
+    this.players.delete(targetStableId);
+    this.votes.delete(targetStableId);
+    this.confidences.delete(targetStableId);
+    this.explanations.delete(targetStableId);
 
     // Send kicked message to the kicked player and close their connection
-    for (const conn of this.room.getConnections()) {
-      if (conn.id === msg.playerId) {
-        conn.send(serialize({ type: "kicked" }));
-        conn.close();
-        break;
-      }
+    const targetConn = this.getConnectionForPlayer(targetStableId);
+    if (targetConn) {
+      targetConn.send(serialize({ type: "kicked" }));
+      targetConn.close();
+    }
+    this.connectionMap.delete(targetStableId);
+
+    // Cancel any pending disconnect
+    const pending = this.pendingDisconnects.get(targetStableId);
+    if (pending) {
+      clearTimeout(pending.timer);
+      this.pendingDisconnects.delete(targetStableId);
     }
 
     // Broadcast player-left to remaining players
     this.room.broadcast(
-      serialize({ type: "player-left", playerId: msg.playerId })
+      serialize({ type: "player-left", playerId: targetStableId })
     );
 
     // Check if removing the player triggers auto-reveal
@@ -715,7 +716,8 @@ export default class PokerServer implements Party.Server {
   }
 
   private handleTransferHost(sender: Party.Connection, msg: { playerId: string }): void {
-    if (!this.isHost(sender.id)) {
+    const senderStableId = this.getStableIdByConnection(sender.id);
+    if (!senderStableId || !this.isHost(senderStableId)) {
       this.sendError(sender, "Only the host can transfer host");
       return;
     }
@@ -733,7 +735,8 @@ export default class PokerServer implements Party.Server {
     sender: Party.Connection,
     msg: ConfigureMessage
   ): void {
-    if (!this.isHost(sender.id)) {
+    const stableId = this.getStableIdByConnection(sender.id);
+    if (!stableId || !this.isHost(stableId)) {
       this.sendError(sender, "Only the host can configure the room");
       return;
     }
@@ -802,31 +805,32 @@ export default class PokerServer implements Party.Server {
   }
 
   onClose(conn: Party.Connection): void {
-    const player = this.players.get(conn.id);
-    if (!player) return;
+    const stableId = this.getStableIdByConnection(conn.id);
+    if (!stableId) return;
 
-    const playerName = player.name;
-    const wasHost = this.isHost(conn.id);
+    // If the connectionMap already points to a different connection (already replaced), do nothing
+    const currentConnId = this.connectionMap.get(stableId);
+    if (currentConnId !== conn.id) return;
 
-    // Grace period: don't broadcast player-left immediately.
-    // If same name rejoins within 3s, it's a tab switch / reconnect.
+    const wasHost = this.isHost(stableId);
+
+    // Grace period: 5s before actually removing the player
     const timer = setTimeout(() => {
-      this.pendingDisconnects.delete(conn.id);
+      this.pendingDisconnects.delete(stableId);
 
-      // Check if they already rejoined under a new connection ID
-      const rejoinedAsOther = [...this.players.values()].some(
-        (p) => p.name === playerName && p.id !== conn.id
-      );
-      if (rejoinedAsOther) return;
+      // Double-check: if they reconnected in the meantime, do nothing
+      const nowConnId = this.connectionMap.get(stableId);
+      if (nowConnId !== conn.id) return;
 
       // Actually remove
-      this.players.delete(conn.id);
-      this.votes.delete(conn.id);
-      this.confidences.delete(conn.id);
-      this.explanations.delete(conn.id);
+      this.players.delete(stableId);
+      this.votes.delete(stableId);
+      this.confidences.delete(stableId);
+      this.explanations.delete(stableId);
+      this.connectionMap.delete(stableId);
 
       this.room.broadcast(
-        serialize({ type: "player-left", playerId: conn.id })
+        serialize({ type: "player-left", playerId: stableId })
       );
 
       if (wasHost) {
@@ -835,8 +839,8 @@ export default class PokerServer implements Party.Server {
           this.broadcastSync();
         }
       }
-    }, 3000);
+    }, 5000);
 
-    this.pendingDisconnects.set(conn.id, { name: playerName, timer });
+    this.pendingDisconnects.set(stableId, { timer });
   }
 }
