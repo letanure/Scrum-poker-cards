@@ -330,17 +330,30 @@ export default class PokerServer implements Party.Server {
     this.room.broadcast(serialize({ type: "revealed", votes, confidences }));
   }
 
+  private deduplicateName(name: string): string {
+    const existingNames = new Set(
+      [...this.players.values()].map((p) => p.name)
+    );
+    if (!existingNames.has(name)) return name;
+    let suffix = 2;
+    while (existingNames.has(`${name} (${suffix})`)) {
+      suffix++;
+    }
+    return `${name} (${suffix})`;
+  }
+
   private handleJoin(sender: Party.Connection, msg: JoinMessage): void {
+    const uniqueName = this.deduplicateName(msg.name);
     const player: Player = {
       id: sender.id,
-      name: msg.name,
-      color: this.getColorForName(msg.name),
+      name: uniqueName,
+      color: this.getColorForName(uniqueName),
       hasVoted: false,
     };
 
     this.players.set(sender.id, player);
 
-    // Returning host within grace period
+    // Returning host within grace period (check original name before dedup)
     if (this.disconnectedHostName === msg.name && this.pendingHostPromotion) {
       clearTimeout(this.pendingHostPromotion);
       this.pendingHostPromotion = null;
