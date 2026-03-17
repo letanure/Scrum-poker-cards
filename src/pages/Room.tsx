@@ -186,7 +186,7 @@ export function Room() {
       ? String((rawState as Record<string, unknown>)["playerName"])
       : null;
 
-  const locationPreset: PresetName =
+  const preset: PresetName =
     rawState !== null &&
     typeof rawState === "object" &&
     "preset" in rawState &&
@@ -199,6 +199,35 @@ export function Room() {
     if (locationPlayerName) return locationPlayerName;
     return localStorage.getItem("poker-name");
   });
+
+  const handleNameSubmit = useCallback((name: string) => {
+    localStorage.setItem("poker-name", name);
+    setPlayerName(name);
+  }, []);
+
+  // Don't connect until we have a name
+  if (!playerName) {
+    return <NameModal onSubmit={handleNameSubmit} />;
+  }
+
+  return (
+    <RoomInner
+      roomId={roomId ?? ""}
+      playerName={playerName}
+      preset={preset}
+    />
+  );
+}
+
+function RoomInner({
+  roomId,
+  playerName,
+  preset,
+}: {
+  roomId: string;
+  playerName: string;
+  preset: PresetName;
+}) {
 
   const [selectedCard, setSelectedCard] = useState<string | null>(null);
   const [selectedConfidence, setSelectedConfidence] = useState<ConfidenceLevel>(CONFIDENCE_LEVELS.confident);
@@ -227,9 +256,6 @@ export function Room() {
     }, 3000);
   }, []);
 
-  const effectiveRoomId = roomId ?? "";
-  const effectiveName = playerName ?? "";
-
   const {
     state,
     isConnected,
@@ -247,7 +273,7 @@ export function Room() {
     kicked,
     kick,
     transferHost,
-  } = usePokerRoom(effectiveRoomId, effectiveName);
+  } = usePokerRoom(roomId, playerName);
 
   const initialConfigSentRef = useRef(false);
 
@@ -272,14 +298,9 @@ export function Room() {
       (state.phase === "waiting" || state.phase === "voting")
     ) {
       initialConfigSentRef.current = true;
-      configure([...PRESETS[locationPreset]], state.config.autoReveal);
+      configure([...PRESETS[preset]], state.config.autoReveal);
     }
-  }, [state, isConnected, playerId, locationPreset, configure]);
-
-  const handleNameSubmit = useCallback((name: string) => {
-    localStorage.setItem("poker-name", name);
-    setPlayerName(name);
-  }, []);
+  }, [state, isConnected, playerId, preset, configure]);
 
   const handleVote = useCallback(
     (value: string) => {
@@ -366,10 +387,6 @@ export function Room() {
     );
   }
 
-  if (!playerName) {
-    return <NameModal onSubmit={handleNameSubmit} />;
-  }
-
   if (!state || !isConnected) {
     return (
       <div id="room__loading" className="min-h-screen bg-gradient-to-br from-[#F8ABAA]/20 via-white to-[#F0649B]/10 flex items-center justify-center">
@@ -428,7 +445,7 @@ export function Room() {
           <span className="text-xs text-gray-400 font-medium">
             {state.players.length} player{state.players.length !== 1 ? "s" : ""}
           </span>
-          <ShareButton roomId={effectiveRoomId} />
+          <ShareButton roomId={roomId} />
         </div>
       </header>
 
