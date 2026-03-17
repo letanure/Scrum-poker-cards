@@ -165,7 +165,6 @@ export function usePokerRoom(roomId: string, playerName: string) {
         }
         case "replaced": {
           setReplaced(true);
-          socket.close();
           break;
         }
         case "kicked": {
