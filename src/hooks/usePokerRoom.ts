@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import usePartySocket from "partysocket/react";
 import type {
   RoomState,
@@ -197,6 +197,28 @@ export function usePokerRoom(roomId: string, playerName: string) {
   if (socket.id && !playerId) {
     setPlayerId(socket.id);
   }
+
+  // Active tab always takes the connection
+  useEffect(() => {
+    if (kicked) return;
+
+    const handleFocus = () => {
+      if (replaced) {
+        setReplaced(false);
+      }
+      // Reconnect — server will handle replacing the other tab
+      if (socket.readyState !== WebSocket.OPEN) {
+        socket.reconnect();
+      } else {
+        // Already open but might be stale — re-send join to reclaim
+        const joinMsg: JoinMessage = { type: "join", name: playerName };
+        socket.send(JSON.stringify(joinMsg));
+      }
+    };
+
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [socket, replaced, kicked, playerName]);
 
   const vote = useCallback(
     (value: string, confidence: ConfidenceLevel) => {
