@@ -1,4 +1,5 @@
-import { motion, AnimatePresence } from "framer-motion";
+import { useRef, useEffect } from "react";
+import { motion, AnimatePresence, useAnimationControls } from "framer-motion";
 import { Card } from "./Card";
 
 interface PlayerSlotProps {
@@ -8,6 +9,7 @@ interface PlayerSlotProps {
   vote: string | null;
   isHost: boolean;
   isCurrentUser: boolean;
+  voteVersion: number;
 }
 
 function getInitial(name: string): string {
@@ -21,41 +23,58 @@ export function PlayerSlot({
   vote,
   isHost,
   isCurrentUser,
+  voteVersion,
 }: PlayerSlotProps) {
   const isRevealed = vote !== null;
+  const controls = useAnimationControls();
+  const prevVersionRef = useRef(voteVersion);
+
+  useEffect(() => {
+    if (hasVoted && voteVersion > prevVersionRef.current) {
+      prevVersionRef.current = voteVersion;
+      void controls.start({
+        scale: [1, 1.2, 0.9, 1.05, 1],
+        rotate: [0, 6, -4, 2, 0],
+        transition: { duration: 0.35, ease: "easeOut" },
+      });
+    }
+  }, [voteVersion, hasVoted, controls]);
 
   return (
     <motion.div
+      id="player-slot"
       className="flex flex-col items-center gap-2"
       initial={{ scale: 0, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       transition={{ type: "spring", stiffness: 300, damping: 20 }}
     >
       {/* Card area */}
-      <div className="h-[60px] flex items-end justify-center">
+      <div id="player-slot__card-area" className="h-[130px] flex items-end justify-center">
         <AnimatePresence>
           {hasVoted && (
             <motion.div
-              initial={{ scale: 0, y: 10 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0, y: 10 }}
-              transition={{ type: "spring", stiffness: 400, damping: 20 }}
+              initial={{ scale: 0, y: 30, rotate: -8 }}
+              animate={{ scale: 1, y: 0, rotate: 0 }}
+              exit={{ scale: 0, y: 30, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 500, damping: 15, bounce: 0.5 }}
             >
-              <Card
-                value={vote ?? "?"}
-                isFlipped={!isRevealed}
-                isSelected={false}
-                size="sm"
-              />
+              <motion.div animate={controls}>
+                <Card
+                  value={vote ?? "?"}
+                  isFlipped={!isRevealed}
+                  isSelected={false}
+                  size="md"
+                />
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
       {/* Avatar */}
-      <div className="relative">
+      <div id="player-slot__avatar" className="relative">
         <div
-          className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md ${
+          className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-base shadow-md ${
             isCurrentUser ? "ring-2 ring-offset-2 ring-[#F0649B]" : ""
           }`}
           style={{ backgroundColor: color }}
@@ -78,7 +97,7 @@ export function PlayerSlot({
       </div>
 
       {/* Name */}
-      <span className="text-xs text-gray-600 font-medium truncate max-w-[72px]">
+      <span className="text-sm text-gray-600 font-semibold truncate max-w-[90px]">
         {name}
       </span>
     </motion.div>

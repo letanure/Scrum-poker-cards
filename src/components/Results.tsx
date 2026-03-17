@@ -163,7 +163,8 @@ export function Results({ votes, players }: ResultsProps) {
 
   return (
     <motion.div
-      className="relative flex flex-col items-center gap-6 p-6 rounded-2xl bg-white/90 shadow-lg border border-[#F8ABAA]/30 backdrop-blur-sm"
+      id="results"
+      className="relative flex flex-col items-center gap-6 p-6 rounded-2xl bg-white/90 shadow-lg border border-[#F8ABAA]/30 backdrop-blur-sm w-full"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: "spring", stiffness: 200, damping: 20 }}

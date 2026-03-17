@@ -12,17 +12,18 @@ interface TableProps {
   players: Player[];
   currentUserId: string;
   revealedVotes: Record<string, string> | null;
+  voteVersions: Record<string, number>;
 }
 
-export function Table({ players, currentUserId, revealedVotes }: TableProps) {
+export function Table({ players, currentUserId, revealedVotes, voteVersions }: TableProps) {
   const votedCount = players.filter((p) => p.hasVoted).length;
   const totalCount = players.length;
   const allVoted = votedCount === totalCount && totalCount > 0;
 
   return (
-    <div className="flex flex-col items-center gap-8 py-8">
+    <div id="table" className="flex flex-col items-center gap-8 py-8">
       {/* Player grid */}
-      <div className="flex flex-wrap justify-center gap-6 max-w-2xl">
+      <div id="table__players" className="flex flex-wrap justify-center gap-6 max-w-2xl">
         {players.map((player) => (
           <PlayerSlot
             key={player.id}
@@ -32,12 +33,13 @@ export function Table({ players, currentUserId, revealedVotes }: TableProps) {
             vote={revealedVotes?.[player.id] ?? null}
             isHost={player.isHost}
             isCurrentUser={player.id === currentUserId}
+            voteVersion={voteVersions[player.id] ?? 0}
           />
         ))}
       </div>
 
       {/* Center status */}
-      <div className="flex items-center justify-center px-6 py-3 rounded-2xl bg-white/80 shadow-md border border-[#F8ABAA]/40 backdrop-blur-sm">
+      <div id="table__status" className="flex items-center justify-center px-6 py-3 rounded-2xl bg-white/80 shadow-md border border-[#F8ABAA]/40 backdrop-blur-sm">
         {revealedVotes ? (
           <span className="text-sm font-semibold text-[#BA3033]">
             Votes revealed!

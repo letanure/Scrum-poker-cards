@@ -23,8 +23,9 @@ function NameModal({
   }, [inputName, onSubmit]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+    <div id="room__name-modal" className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
       <motion.div
+        id="room__name-modal__card"
         className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm flex flex-col gap-4"
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
@@ -87,15 +88,15 @@ function ConfigPanel({
 
   return (
     <motion.div
-      className="flex flex-col gap-3 p-4 rounded-2xl bg-white/90 shadow-md border border-[#F8ABAA]/30 backdrop-blur-sm"
+      id="room__config-panel"
+      className="flex flex-col gap-3 p-4 rounded-2xl bg-white/90 shadow-md border border-[#F8ABAA]/30 backdrop-blur-sm w-full"
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: "spring", stiffness: 200, damping: 20 }}
     >
       <h3 className="text-sm font-bold text-gray-600">Room Settings</h3>
 
-      {/* Preset selector */}
-      <div className="flex flex-wrap gap-2">
+      <div id="room__config-panel__presets" className="flex flex-wrap gap-2">
         {PRESET_NAMES.map((presetName) => (
           <motion.button
             key={presetName}
@@ -115,8 +116,7 @@ function ConfigPanel({
         ))}
       </div>
 
-      {/* Auto-reveal toggle */}
-      <label className="flex items-center gap-2 cursor-pointer">
+      <label id="room__config-panel__auto-reveal" className="flex items-center gap-2 cursor-pointer">
         <input
           type="checkbox"
           checked={autoReveal}
@@ -162,6 +162,7 @@ export function Room() {
     setTopic,
     configure,
     playerId,
+    voteVersions,
   } = usePokerRoom(effectiveRoomId, effectiveName);
 
   const handleNameSubmit = useCallback((name: string) => {
@@ -182,15 +183,13 @@ export function Room() {
     newRound();
   }, [newRound]);
 
-  // Show name modal if no name
   if (!playerName) {
     return <NameModal onSubmit={handleNameSubmit} />;
   }
 
-  // Loading state
   if (!state || !isConnected) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#F8ABAA]/20 via-white to-[#F0649B]/10 flex items-center justify-center">
+      <div id="room__loading" className="min-h-screen bg-gradient-to-br from-[#F8ABAA]/20 via-white to-[#F0649B]/10 flex items-center justify-center">
         <motion.div
           className="flex flex-col items-center gap-4"
           initial={{ opacity: 0 }}
@@ -222,10 +221,10 @@ export function Room() {
   const revealedVotes = isRevealed ? state.votes : null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F8ABAA]/20 via-white to-[#F0649B]/10 flex flex-col">
+    <div id="room" className="min-h-screen bg-gradient-to-br from-[#F8ABAA]/20 via-white to-[#F0649B]/10 flex flex-col">
       {/* Top bar */}
-      <header className="flex items-center justify-between px-4 py-3 border-b border-[#F8ABAA]/30 bg-white/80 backdrop-blur-sm">
-        <div className="flex items-center gap-3">
+      <header id="room__header" className="flex items-center justify-between px-4 py-3 border-b border-[#F8ABAA]/30 bg-white/80 backdrop-blur-sm z-20">
+        <div id="room__header__info" className="flex items-center gap-3">
           <h1 className="text-lg font-bold text-[#BA3033] font-[Nunito]">
             Scrum Poker
           </h1>
@@ -235,7 +234,7 @@ export function Room() {
             </span>
           )}
         </div>
-        <div className="flex items-center gap-3">
+        <div id="room__header__actions" className="flex items-center gap-3">
           <span className="text-xs text-gray-400 font-medium">
             {state.players.length} player{state.players.length !== 1 ? "s" : ""}
           </span>
@@ -244,7 +243,7 @@ export function Room() {
       </header>
 
       {/* Main content */}
-      <main className="flex-1 flex flex-col items-center gap-4 px-4 py-4 max-w-3xl mx-auto w-full">
+      <main id="room__main" className="flex-1 flex flex-col items-center gap-4 px-4 py-4 max-w-3xl mx-auto w-full">
         {/* Host controls */}
         {isHost && (isVoting || isRevealed) && (state.phase === "voting" || state.phase === "revealed") && (
           <HostControls
@@ -270,6 +269,7 @@ export function Room() {
           players={tablePlayers}
           currentUserId={playerId}
           revealedVotes={revealedVotes}
+          voteVersions={voteVersions}
         />
 
         {/* Results */}
@@ -282,19 +282,22 @@ export function Room() {
 
       {/* Card hand at bottom */}
       {(isVoting || isWaiting) && (
-        <div className="sticky bottom-0 bg-white/80 backdrop-blur-sm border-t border-[#F8ABAA]/30">
-          <CardHand
-            cards={state.config.cards}
-            selectedCard={selectedCard}
-            onSelect={handleVote}
-            disabled={!isVoting}
-          />
+        <div id="room__hand-dock" className="sticky bottom-0 z-10" style={{ overflow: "visible" }}>
+          <div id="room__hand-dock__bg" className="absolute inset-x-0 bottom-0 h-full bg-white/80 backdrop-blur-sm border-t border-[#F8ABAA]/30" />
+          <div id="room__hand-dock__cards" className="relative" style={{ overflow: "visible" }}>
+            <CardHand
+              cards={state.config.cards}
+              selectedCard={selectedCard}
+              onSelect={handleVote}
+              disabled={!isVoting}
+            />
+          </div>
         </div>
       )}
 
       {/* Disconnected overlay */}
       {!isConnected && state && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+        <div id="room__disconnected" className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl p-6 text-center">
             <p className="text-sm font-semibold text-[#BA3033]">
               Connection lost. Reconnecting...

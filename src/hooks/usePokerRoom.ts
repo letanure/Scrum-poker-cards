@@ -17,6 +17,7 @@ const PARTYKIT_HOST =
 export function usePokerRoom(roomId: string, playerName: string) {
   const [state, setState] = useState<RoomState | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [voteVersions, setVoteVersions] = useState<Record<string, number>>({});
   const playerIdRef = useRef<string>("");
 
   const socket = usePartySocket({
@@ -94,6 +95,10 @@ export function usePokerRoom(roomId: string, playerName: string) {
                 : [...prev.votedPlayerIds, message.playerId],
             };
           });
+          setVoteVersions((prev) => ({
+            ...prev,
+            [message.playerId]: (prev[message.playerId] ?? 0) + 1,
+          }));
           break;
         }
         case "revealed": {
@@ -186,5 +191,6 @@ export function usePokerRoom(roomId: string, playerName: string) {
     setTopic,
     configure,
     playerId: playerIdRef.current,
+    voteVersions,
   };
 }

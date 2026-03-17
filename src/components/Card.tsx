@@ -3,8 +3,8 @@ import { getCardInfo, CARD_BACK_SVG } from "../lib/cards.ts";
 
 const CARD_SIZES = {
   sm: { width: 48, height: 68, fontSize: "text-xs", valueSize: "text-sm" },
-  md: { width: 72, height: 100, fontSize: "text-base", valueSize: "text-lg" },
-  lg: { width: 96, height: 134, fontSize: "text-xl", valueSize: "text-2xl" },
+  md: { width: 88, height: 124, fontSize: "text-base", valueSize: "text-xl" },
+  lg: { width: 110, height: 154, fontSize: "text-xl", valueSize: "text-3xl" },
 } as const;
 
 type CardSize = keyof typeof CARD_SIZES;
@@ -32,7 +32,8 @@ export function Card({
 
   return (
     <motion.div
-      className="cursor-pointer select-none"
+      id={`card--${value}`}
+      className="card cursor-pointer select-none"
       style={{
         width: dimensions.width,
         height: dimensions.height,

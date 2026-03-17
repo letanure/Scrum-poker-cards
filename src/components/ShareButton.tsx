@@ -28,7 +28,7 @@ export function ShareButton({ roomId }: ShareButtonProps) {
   }, [roomId]);
 
   return (
-    <div className="relative inline-flex">
+    <div id="share-button" className="relative inline-flex">
       <motion.button
         className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-[#F8ABAA]/50 text-sm font-medium text-[#BA3033] shadow-sm hover:shadow-md cursor-pointer transition-shadow"
         whileHover={{ scale: 1.03 }}

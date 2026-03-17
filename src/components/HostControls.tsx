@@ -47,7 +47,8 @@ export function HostControls({
 
   return (
     <motion.div
-      className="flex flex-col sm:flex-row items-center gap-3 p-4 rounded-2xl bg-white/90 shadow-md border border-[#F8ABAA]/30 backdrop-blur-sm"
+      id="host-controls"
+      className="flex flex-col sm:flex-row items-center gap-3 p-4 rounded-2xl bg-white/90 shadow-md border border-[#F8ABAA]/30 backdrop-blur-sm w-full"
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: "spring", stiffness: 200, damping: 20 }}

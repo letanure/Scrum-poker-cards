@@ -19,9 +19,11 @@ export function CardHand({
 
   return (
     <motion.div
-      className={`flex items-end justify-center gap-1 sm:gap-2 px-4 py-4 overflow-x-auto ${
+      id="card-hand"
+      className={`flex items-end justify-center gap-1 sm:gap-2 px-4 pt-8 pb-4 ${
         disabled ? "opacity-50 pointer-events-none" : ""
       }`}
+      style={{ overflow: "visible" }}
       initial={{ y: 80, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ type: "spring", stiffness: 200, damping: 20, delay: 0.2 }}
@@ -34,10 +36,16 @@ export function CardHand({
         return (
           <motion.div
             key={value}
-            style={{ rotate: `${rotation}deg` }}
+            id={`card-hand__card--${value}`}
+            className="card-hand__card"
+            style={{
+              rotate: `${rotation}deg`,
+              zIndex: isSelected ? 50 : totalCards - Math.abs(Math.round(offset)),
+              position: "relative",
+            }}
             animate={{
-              y: isSelected ? -12 : 0,
-              scale: isSelected ? 1.1 : 1,
+              y: isSelected ? -20 : 0,
+              scale: isSelected ? 1.15 : 1,
             }}
             transition={{ type: "spring", stiffness: 400, damping: 20 }}
           >
