@@ -10,7 +10,7 @@
     "dev:all": "concurrently \"npm run dev\" \"npm run dev:party\"",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "deploy": "vite build && npx partykit deploy",
+    "deploy": "npm run build && npx wrangler pages deploy dist --project-name scrum-poker-cards --branch master --commit-dirty=true && npx partykit deploy",
     "typecheck": "tsc -b"
   },
   "repository": {
