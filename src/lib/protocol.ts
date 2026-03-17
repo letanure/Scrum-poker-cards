@@ -1,3 +1,13 @@
+// Confidence levels
+export const CONFIDENCE_LEVELS = {
+  confident: "confident",
+  guessing: "guessing",
+  noIdea: "no-idea",
+} as const;
+
+export type ConfidenceLevel =
+  (typeof CONFIDENCE_LEVELS)[keyof typeof CONFIDENCE_LEVELS];
+
 // Room phases
 export const ROOM_PHASES = {
   waiting: "waiting",
@@ -28,8 +38,10 @@ export type RoomState = {
   topic: string;
   players: Player[];
   votes: Record<string, string>;
+  confidences: Record<string, ConfidenceLevel>;
   votedPlayerIds: string[];
   config: RoomConfig;
+  explanations: Record<string, string>;
 };
 
 // --- Client → Server messages ---
@@ -42,6 +54,7 @@ export type JoinMessage = {
 export type VoteMessage = {
   type: "vote";
   value: string;
+  confidence: ConfidenceLevel;
 };
 
 export type RevealMessage = {
@@ -64,13 +77,19 @@ export type ConfigureMessage = {
   autoReveal: boolean;
 };
 
+export type ExplainMessage = {
+  type: "explain";
+  text: string;
+};
+
 export type ClientMessage =
   | JoinMessage
   | VoteMessage
   | RevealMessage
   | NewRoundMessage
   | SetTopicMessage
-  | ConfigureMessage;
+  | ConfigureMessage
+  | ExplainMessage;
 
 // --- Server → Client messages ---
 
@@ -97,6 +116,7 @@ export type PlayerVotedMessage = {
 export type RevealedMessage = {
   type: "revealed";
   votes: Record<string, string>;
+  confidences: Record<string, ConfidenceLevel>;
 };
 
 export type NewRoundServerMessage = {
@@ -109,6 +129,12 @@ export type ErrorMessage = {
   message: string;
 };
 
+export type ExplanationMessage = {
+  type: "explanation";
+  playerId: string;
+  text: string;
+};
+
 export type ServerMessage =
   | SyncMessage
   | PlayerJoinedMessage
@@ -116,4 +142,5 @@ export type ServerMessage =
   | PlayerVotedMessage
   | RevealedMessage
   | NewRoundServerMessage
-  | ErrorMessage;
+  | ErrorMessage
+  | ExplanationMessage;

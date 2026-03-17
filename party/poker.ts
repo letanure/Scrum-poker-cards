@@ -41,8 +41,10 @@ interface SerializedRoomState {
   topic: string;
   players: Player[];
   votes: Record<string, string>;
+  confidences: Record<string, string>;
   votedPlayerIds: string[];
   config: RoomConfig;
+  explanations: Record<string, string>;
 }
 
 // Client → Server messages
@@ -54,6 +56,7 @@ interface JoinMessage {
 interface VoteMessage {
   type: "vote";
   value: string;
+  confidence: string;
 }
 
 interface RevealMessage {
@@ -76,13 +79,19 @@ interface ConfigureMessage {
   autoReveal: boolean;
 }
 
+interface ExplainMessage {
+  type: "explain";
+  text: string;
+}
+
 type ClientMessage =
   | JoinMessage
   | VoteMessage
   | RevealMessage
   | NewRoundMessage
   | SetTopicMessage
-  | ConfigureMessage;
+  | ConfigureMessage
+  | ExplainMessage;
 
 // Server → Client messages
 interface SyncMessage {
@@ -108,6 +117,7 @@ interface PlayerVotedMessage {
 interface RevealedMessage {
   type: "revealed";
   votes: Record<string, string>;
+  confidences: Record<string, string>;
 }
 
 interface NewRoundBroadcastMessage {
@@ -120,6 +130,12 @@ interface ErrorMessage {
   message: string;
 }
 
+interface ExplanationMessage {
+  type: "explanation";
+  playerId: string;
+  text: string;
+}
+
 type ServerMessage =
   | SyncMessage
   | PlayerJoinedMessage
@@ -127,7 +143,8 @@ type ServerMessage =
   | PlayerVotedMessage
   | RevealedMessage
   | NewRoundBroadcastMessage
-  | ErrorMessage;
+  | ErrorMessage
+  | ExplanationMessage;
 
 function serialize(message: ServerMessage): string {
   return JSON.stringify(message);
@@ -139,6 +156,8 @@ export default class PokerServer implements Party.Server {
   private topic = "";
   private players: Map<string, Player> = new Map();
   private votes: Map<string, string> = new Map();
+  private confidences: Map<string, string> = new Map();
+  private explanations: Map<string, string> = new Map();
   private config: RoomConfig = {
     cards: ["1", "2", "3", "5", "8", "13", "20", "40", "100", "infinity", "?", "coffee", "brownie", "yak"],
     autoReveal: false,
@@ -164,10 +183,24 @@ export default class PokerServer implements Party.Server {
       votes[playerId] = value;
     }
 
+    const confidences: Record<string, string> = {};
+    for (const [playerId, value] of this.confidences.entries()) {
+      confidences[playerId] = value;
+    }
+
     const votedPlayerIds: string[] = [];
     for (const [playerId, player] of this.players.entries()) {
       if (player.hasVoted) {
         votedPlayerIds.push(playerId);
+      }
+    }
+
+    const isRevealed = this.phase === "revealed";
+
+    const explanations: Record<string, string> = {};
+    if (isRevealed) {
+      for (const [playerId, text] of this.explanations.entries()) {
+        explanations[playerId] = text;
       }
     }
 
@@ -176,9 +209,11 @@ export default class PokerServer implements Party.Server {
       hostId: this.hostId,
       topic: this.topic,
       players,
-      votes: this.phase === "revealed" ? votes : {},
+      votes: isRevealed ? votes : {},
+      confidences: isRevealed ? confidences : {},
       votedPlayerIds,
       config: this.config,
+      explanations,
     };
   }
 
@@ -225,7 +260,12 @@ export default class PokerServer implements Party.Server {
       votes[playerId] = value;
     }
 
-    this.room.broadcast(serialize({ type: "revealed", votes }));
+    const confidences: Record<string, string> = {};
+    for (const [playerId, value] of this.confidences.entries()) {
+      confidences[playerId] = value;
+    }
+
+    this.room.broadcast(serialize({ type: "revealed", votes, confidences }));
   }
 
   private handleJoin(sender: Party.Connection, msg: JoinMessage): void {
@@ -269,6 +309,7 @@ export default class PokerServer implements Party.Server {
     }
 
     this.votes.set(sender.id, msg.value);
+    this.confidences.set(sender.id, msg.confidence ?? "confident");
     player.hasVoted = true;
 
     this.room.broadcast(
@@ -299,6 +340,8 @@ export default class PokerServer implements Party.Server {
     }
 
     this.votes.clear();
+    this.confidences.clear();
+    this.explanations.clear();
     for (const player of this.players.values()) {
       player.hasVoted = false;
     }
@@ -322,6 +365,25 @@ export default class PokerServer implements Party.Server {
 
     this.topic = msg.topic;
     this.broadcastSync();
+  }
+
+  private handleExplain(sender: Party.Connection, msg: ExplainMessage): void {
+    if (this.phase !== PHASES.revealed) {
+      this.sendError(sender, "Can only explain after reveal");
+      return;
+    }
+
+    const player = this.players.get(sender.id);
+    if (!player) {
+      this.sendError(sender, "You have not joined the room");
+      return;
+    }
+
+    this.explanations.set(sender.id, msg.text);
+
+    this.room.broadcast(
+      serialize({ type: "explanation", playerId: sender.id, text: msg.text })
+    );
   }
 
   private handleConfigure(
@@ -373,6 +435,9 @@ export default class PokerServer implements Party.Server {
       case "configure":
         this.handleConfigure(sender, parsed);
         break;
+      case "explain":
+        this.handleExplain(sender, parsed);
+        break;
       default:
         this.sendError(sender, "Unknown message type");
     }
@@ -384,6 +449,8 @@ export default class PokerServer implements Party.Server {
 
     this.players.delete(conn.id);
     this.votes.delete(conn.id);
+    this.confidences.delete(conn.id);
+    this.explanations.delete(conn.id);
 
     const wasHost = this.isHost(conn.id);
     if (wasHost) {

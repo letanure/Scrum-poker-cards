@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Card } from "./Card.tsx";
 import { getCardInfo } from "../lib/cards.ts";
@@ -26,6 +26,7 @@ export function CardHand({
 }: CardHandProps) {
   const totalCards = cards.length;
   const midIndex = (totalCards - 1) / 2;
+  const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
 
   const cardWidth = useMemo(() => {
     if (typeof window === "undefined") return MAX_CARD_WIDTH;
@@ -36,7 +37,7 @@ export function CardHand({
 
   const cardHeight = Math.round(cardWidth * CARD_ASPECT);
 
-  const handleSelect = useCallback((value: string) => {
+  const confirmSelection = useCallback((value: string) => {
     const info = getCardInfo(value);
     if (info?.description && onCardDescription) {
       onCardDescription(info.description, info.explanation);
@@ -48,22 +49,43 @@ export function CardHand({
     if (disabled) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight" && e.key !== "Enter") return;
-
-      const currentIndex = selectedCard ? cards.indexOf(selectedCard) : -1;
+      const target = e.target;
+      if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return;
 
       if (e.key === "ArrowRight") {
-        const next = currentIndex < cards.length - 1 ? currentIndex + 1 : 0;
-        handleSelect(cards[next]);
+        e.preventDefault();
+        setHighlightedIndex((prev) => {
+          if (prev === null) {
+            const selectedIdx = selectedCard ? cards.indexOf(selectedCard) : -1;
+            return selectedIdx >= 0 ? (selectedIdx < cards.length - 1 ? selectedIdx + 1 : 0) : 0;
+          }
+          return prev < cards.length - 1 ? prev + 1 : 0;
+        });
       } else if (e.key === "ArrowLeft") {
-        const prev = currentIndex > 0 ? currentIndex - 1 : cards.length - 1;
-        handleSelect(cards[prev]);
+        e.preventDefault();
+        setHighlightedIndex((prev) => {
+          if (prev === null) {
+            const selectedIdx = selectedCard ? cards.indexOf(selectedCard) : -1;
+            return selectedIdx >= 0 ? (selectedIdx > 0 ? selectedIdx - 1 : cards.length - 1) : cards.length - 1;
+          }
+          return prev > 0 ? prev - 1 : cards.length - 1;
+        });
+      } else if (e.key === "ArrowUp" || e.key === "Enter") {
+        e.preventDefault();
+        const idx = highlightedIndex ?? (selectedCard ? cards.indexOf(selectedCard) : null);
+        if (idx !== null && idx >= 0 && idx < cards.length) {
+          confirmSelection(cards[idx]);
+          setHighlightedIndex(null);
+        }
+      } else if (e.key === "ArrowDown" || e.key === "Escape") {
+        e.preventDefault();
+        setHighlightedIndex(null);
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [cards, selectedCard, disabled, handleSelect]);
+  }, [cards, selectedCard, highlightedIndex, disabled, confirmSelection]);
 
   return (
     <motion.div
@@ -80,6 +102,7 @@ export function CardHand({
         const offset = index - midIndex;
         const rotation = offset * (cardWidth > 60 ? 2 : 1.5);
         const isSelected = selectedCard === value;
+        const isHighlighted = highlightedIndex === index;
 
         return (
           <motion.div
@@ -88,20 +111,29 @@ export function CardHand({
             className="card-hand__card"
             style={{
               rotate: `${rotation}deg`,
-              zIndex: isSelected ? 50 : totalCards - Math.abs(Math.round(offset)),
+              zIndex: isHighlighted ? 51 : isSelected ? 50 : totalCards - Math.abs(Math.round(offset)),
               position: "relative",
             }}
             animate={{
-              y: isSelected ? -20 : 0,
-              scale: isSelected ? 1.15 : 1,
+              y: isHighlighted ? -14 : isSelected ? -20 : 0,
+              scale: isHighlighted ? 1.1 : isSelected ? 1.15 : 1,
             }}
             transition={{ type: "spring", stiffness: 400, damping: 20 }}
           >
+            {isHighlighted && !isSelected && (
+              <div
+                className="absolute -inset-1 rounded-xl border-2 border-dashed border-[#7F6CB1] pointer-events-none"
+                style={{ zIndex: 52 }}
+              />
+            )}
             <Card
               value={value}
               isFlipped={false}
               isSelected={isSelected}
-              onClick={() => handleSelect(value)}
+              onClick={() => {
+                setHighlightedIndex(null);
+                confirmSelection(value);
+              }}
               size="md"
               widthOverride={cardWidth}
               heightOverride={cardHeight}

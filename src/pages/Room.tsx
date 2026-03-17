@@ -8,6 +8,7 @@ import { Results } from "../components/Results.tsx";
 import { HostControls } from "../components/HostControls.tsx";
 import { ShareButton } from "../components/ShareButton.tsx";
 import { PRESETS, type PresetName } from "../lib/cards.ts";
+import { CONFIDENCE_LEVELS, type ConfidenceLevel } from "../lib/protocol.ts";
 
 function NameModal({
   onSubmit,
@@ -131,6 +132,45 @@ function ConfigPanel({
   );
 }
 
+const CONFIDENCE_OPTIONS = [
+  { value: CONFIDENCE_LEVELS.confident, label: "Confident", emoji: "\uD83D\uDE0E", color: "#94A979", bgColor: "#94A979/20" },
+  { value: CONFIDENCE_LEVELS.guessing, label: "Guessing", emoji: "\uD83E\uDD14", color: "#F39C12", bgColor: "#F39C12/20" },
+  { value: CONFIDENCE_LEVELS.noIdea, label: "No idea", emoji: "\uD83E\uDD37", color: "#E74C3C", bgColor: "#E74C3C/20" },
+] as const;
+
+function ConfidenceToggle({
+  selected,
+  onSelect,
+}: {
+  selected: ConfidenceLevel;
+  onSelect: (level: ConfidenceLevel) => void;
+}) {
+  return (
+    <div id="room__confidence-toggle" className="flex items-center justify-center gap-2 py-2">
+      {CONFIDENCE_OPTIONS.map((option) => {
+        const isActive = selected === option.value;
+        return (
+          <motion.button
+            key={option.value}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold cursor-pointer transition-colors border ${
+              isActive
+                ? "text-white shadow-md"
+                : "bg-white/80 text-gray-500 border-gray-200 hover:border-gray-300"
+            }`}
+            style={isActive ? { backgroundColor: option.color, borderColor: option.color } : undefined}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => onSelect(option.value)}
+          >
+            <span>{option.emoji}</span>
+            <span>{option.label}</span>
+          </motion.button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function Room() {
   const { roomId } = useParams<{ roomId: string }>();
   const location = useLocation();
@@ -149,6 +189,7 @@ export function Room() {
   });
 
   const [selectedCard, setSelectedCard] = useState<string | null>(null);
+  const [selectedConfidence, setSelectedConfidence] = useState<ConfidenceLevel>(CONFIDENCE_LEVELS.confident);
   const [shout, setShout] = useState<{ text: string; explanation?: string; version: number } | null>(null);
 
   const shoutVersionRef = useRef(0);
@@ -180,6 +221,7 @@ export function Room() {
     newRound,
     setTopic,
     configure,
+    explain,
     playerId,
     voteVersions,
   } = usePokerRoom(effectiveRoomId, effectiveName);
@@ -192,13 +234,14 @@ export function Room() {
   const handleVote = useCallback(
     (value: string) => {
       setSelectedCard(value);
-      vote(value);
+      vote(value, selectedConfidence);
     },
-    [vote],
+    [vote, selectedConfidence],
   );
 
   const handleNewRound = useCallback(() => {
     setSelectedCard(null);
+    setSelectedConfidence(CONFIDENCE_LEVELS.confident);
     newRound();
   }, [newRound]);
 
@@ -294,7 +337,14 @@ export function Room() {
         {/* Results */}
         <AnimatePresence>
           {isRevealed && Object.keys(state.votes).length > 0 && (
-            <Results votes={state.votes} players={state.players} />
+            <Results
+              votes={state.votes}
+              players={state.players}
+              confidences={state.confidences}
+              explanations={state.explanations}
+              currentUserId={playerId}
+              onExplain={explain}
+            />
           )}
         </AnimatePresence>
 
@@ -332,14 +382,22 @@ export function Room() {
       {(isVoting || isWaiting) && (
         <div id="room__hand-dock" className="sticky bottom-0 z-10" style={{ overflow: "visible" }}>
           <div id="room__hand-dock__bg" className="absolute inset-x-0 bottom-0 h-full bg-white/80 border-t border-[#F8ABAA]/30" />
-          <div id="room__hand-dock__cards" className="relative z-10" style={{ overflow: "visible" }}>
-            <CardHand
-              cards={state.config.cards}
-              selectedCard={selectedCard}
-              onSelect={handleVote}
-              onCardDescription={handleCardDescription}
-              disabled={!isVoting}
-            />
+          <div className="relative z-10">
+            {isVoting && (
+              <ConfidenceToggle
+                selected={selectedConfidence}
+                onSelect={setSelectedConfidence}
+              />
+            )}
+            <div id="room__hand-dock__cards" style={{ overflow: "visible" }}>
+              <CardHand
+                cards={state.config.cards}
+                selectedCard={selectedCard}
+                onSelect={handleVote}
+                onCardDescription={handleCardDescription}
+                disabled={!isVoting}
+              />
+            </div>
           </div>
         </div>
       )}

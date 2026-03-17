@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
 import usePartySocket from "partysocket/react";
 import type {
   RoomState,
@@ -9,6 +9,8 @@ import type {
   NewRoundMessage,
   SetTopicMessage,
   ConfigureMessage,
+  ExplainMessage,
+  ConfidenceLevel,
 } from "../lib/protocol.ts";
 
 const PARTYKIT_HOST =
@@ -18,24 +20,14 @@ export function usePokerRoom(roomId: string, playerName: string) {
   const [state, setState] = useState<RoomState | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [voteVersions, setVoteVersions] = useState<Record<string, number>>({});
-  const playerIdRef = useRef<string>("");
+  const [playerId, setPlayerId] = useState("");
 
   const socket = usePartySocket({
     host: PARTYKIT_HOST,
     room: roomId,
-    onOpen(event) {
-      const ws = event.target;
-      if (ws instanceof WebSocket) {
-        // partysocket sets id on the instance
-        const ps = ws as unknown as { id?: string };
-        if (ps.id) {
-          playerIdRef.current = ps.id;
-        }
-      }
-
-      // Also grab id from the partysocket instance directly
+    onOpen() {
       if (socket.id) {
-        playerIdRef.current = socket.id;
+        setPlayerId(socket.id);
       }
 
       setIsConnected(true);
@@ -44,9 +36,7 @@ export function usePokerRoom(roomId: string, playerName: string) {
       socket.send(JSON.stringify(joinMsg));
     },
     onMessage(event) {
-      const message: ServerMessage = JSON.parse(
-        event.data as string,
-      ) as ServerMessage;
+      const message = JSON.parse(String(event.data)) as ServerMessage;
 
       switch (message.type) {
         case "sync": {
@@ -69,12 +59,18 @@ export function usePokerRoom(roomId: string, playerName: string) {
             const players = prev.players.filter(
               (p) => p.id !== message.playerId,
             );
-            const { [message.playerId]: _, ...remainingVotes } = prev.votes;
-            void _;
+            const { [message.playerId]: _v, ...remainingVotes } = prev.votes;
+            void _v;
+            const { [message.playerId]: _c, ...remainingConfidences } = prev.confidences;
+            void _c;
+            const { [message.playerId]: _e, ...remainingExplanations } = prev.explanations;
+            void _e;
             return {
               ...prev,
               players,
               votes: remainingVotes,
+              confidences: remainingConfidences,
+              explanations: remainingExplanations,
               votedPlayerIds: prev.votedPlayerIds.filter(
                 (id) => id !== message.playerId,
               ),
@@ -108,6 +104,7 @@ export function usePokerRoom(roomId: string, playerName: string) {
               ...prev,
               phase: "revealed",
               votes: message.votes,
+              confidences: message.confidences,
             };
           });
           break;
@@ -119,9 +116,24 @@ export function usePokerRoom(roomId: string, playerName: string) {
               ...prev,
               phase: "voting",
               votes: {},
+              confidences: {},
+              explanations: {},
               votedPlayerIds: [],
               topic: message.topic ?? prev.topic,
               players: prev.players.map((p) => ({ ...p, hasVoted: false })),
+            };
+          });
+          break;
+        }
+        case "explanation": {
+          setState((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              explanations: {
+                ...prev.explanations,
+                [message.playerId]: message.text,
+              },
             };
           });
           break;
@@ -140,14 +152,14 @@ export function usePokerRoom(roomId: string, playerName: string) {
     },
   });
 
-  // Capture player id once socket is available
-  if (socket.id && !playerIdRef.current) {
-    playerIdRef.current = socket.id;
+  // Ensure playerId is captured even if onOpen ran before state setter
+  if (socket.id && !playerId) {
+    setPlayerId(socket.id);
   }
 
   const vote = useCallback(
-    (value: string) => {
-      const msg: VoteMessage = { type: "vote", value };
+    (value: string, confidence: ConfidenceLevel) => {
+      const msg: VoteMessage = { type: "vote", value, confidence };
       socket.send(JSON.stringify(msg));
     },
     [socket],
@@ -182,6 +194,14 @@ export function usePokerRoom(roomId: string, playerName: string) {
     [socket],
   );
 
+  const explain = useCallback(
+    (text: string) => {
+      const msg: ExplainMessage = { type: "explain", text };
+      socket.send(JSON.stringify(msg));
+    },
+    [socket],
+  );
+
   return {
     state,
     isConnected,
@@ -190,7 +210,8 @@ export function usePokerRoom(roomId: string, playerName: string) {
     newRound,
     setTopic,
     configure,
-    playerId: playerIdRef.current,
+    explain,
+    playerId,
     voteVersions,
   };
 }
