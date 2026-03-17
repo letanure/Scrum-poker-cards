@@ -4,10 +4,10 @@ import { Card } from "./Card.tsx";
 import { getCardInfo } from "../lib/cards.ts";
 
 const CARD_ASPECT = 1.4;
-const MIN_CARD_WIDTH = 48;
+const MIN_CARD_WIDTH = 56;
 const MAX_CARD_WIDTH = 88;
 const CARD_GAP = 6;
-const HAND_PADDING = 32;
+const HAND_PADDING = 16;
 
 interface CardHandProps {
   cards: string[];
@@ -87,13 +87,15 @@ export function CardHand({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [cards, selectedCard, highlightedIndex, disabled, confirmSelection]);
 
+  const needsScroll = totalCards * (MIN_CARD_WIDTH + CARD_GAP) > (typeof window !== "undefined" ? window.innerWidth - HAND_PADDING * 2 : 9999);
+
   return (
     <motion.div
       id="card-hand"
-      className={`flex items-end justify-center px-4 pt-8 pb-4 ${
+      className={`flex items-end px-4 pt-8 pb-4 ${needsScroll ? "justify-start overflow-x-auto" : "justify-center"} ${
         disabled ? "opacity-50 pointer-events-none" : ""
       }`}
-      style={{ overflow: "visible", gap: `${Math.min(CARD_GAP, cardWidth > 60 ? 8 : 2)}px` }}
+      style={{ overflowY: "visible", gap: `${Math.min(CARD_GAP, cardWidth > 60 ? 8 : 2)}px`, WebkitOverflowScrolling: "touch" }}
       initial={{ y: 80, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ type: "spring", stiffness: 200, damping: 20, delay: 0.2 }}
