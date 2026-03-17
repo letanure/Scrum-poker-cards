@@ -209,6 +209,8 @@ export default class PokerServer implements Party.Server {
   private currentTopicIndex = 0;
   private topicResults: Map<number, TopicResult> = new Map();
   private colorIndex = 0;
+  private pendingHostPromotion: ReturnType<typeof setTimeout> | null = null;
+  private disconnectedHostName: string | null = null;
 
   constructor(readonly room: Party.Room) {}
 
@@ -336,8 +338,16 @@ export default class PokerServer implements Party.Server {
 
     this.players.set(sender.id, player);
 
-    // First player becomes host
-    if (this.players.size === 1) {
+    // Returning host within grace period
+    if (this.disconnectedHostName === msg.name && this.pendingHostPromotion) {
+      clearTimeout(this.pendingHostPromotion);
+      this.pendingHostPromotion = null;
+      this.disconnectedHostName = null;
+      this.hostId = sender.id;
+    }
+
+    // First player becomes host (only if no host assigned yet)
+    if (this.players.size === 1 && (this.hostId === "" || !this.players.has(this.hostId))) {
       this.hostId = sender.id;
       if (this.phase === PHASES.waiting) {
         this.phase = PHASES.voting;
@@ -697,23 +707,35 @@ export default class PokerServer implements Party.Server {
     const player = this.players.get(conn.id);
     if (!player) return;
 
+    const wasHost = this.isHost(conn.id);
+    const playerName = player.name;
+
     this.players.delete(conn.id);
     this.votes.delete(conn.id);
     this.confidences.delete(conn.id);
     this.explanations.delete(conn.id);
 
-    const wasHost = this.isHost(conn.id);
-    if (wasHost) {
-      this.promoteNextHost();
-    }
-
     this.room.broadcast(
       serialize({ type: "player-left", playerId: conn.id })
     );
 
-    // If host changed, broadcast full sync so everyone knows the new host
-    if (wasHost && this.hostId !== "") {
-      this.broadcastSync();
+    if (wasHost) {
+      // Grace period: wait 5s for reconnection before promoting
+      this.disconnectedHostName = playerName;
+      if (this.pendingHostPromotion) {
+        clearTimeout(this.pendingHostPromotion);
+      }
+      this.pendingHostPromotion = setTimeout(() => {
+        this.pendingHostPromotion = null;
+        this.disconnectedHostName = null;
+        // Only promote if the host hasn't been restored
+        if (!this.players.has(conn.id)) {
+          this.promoteNextHost();
+          if (this.hostId !== "") {
+            this.broadcastSync();
+          }
+        }
+      }, 5000);
     }
   }
 }
