@@ -1,6 +1,7 @@
 export type CardInfo = {
   label: string;
   description: string;
+  explanation?: string;
   svgPath: string;
   color: string;
 };
@@ -26,13 +27,15 @@ export const CARD_MAP: Record<string, CardInfo> = {
   },
   "5": {
     label: "5",
-    description: "Ornitorinco",
+    description: "Weird but doable",
+    explanation: "Like a platypus — odd, but it works",
     svgPath: "/svg/planning poker-Ornitorinco.svg",
     color: "#B52D63",
   },
   "8": {
     label: "8",
     description: "An arm and a leg",
+    explanation: "It's gonna cost you",
     svgPath: "/svg/planning poker_An arm and a leg.svg",
     color: "#A3205B",
   },
@@ -45,48 +48,56 @@ export const CARD_MAP: Record<string, CardInfo> = {
   "20": {
     label: "20",
     description: "Don't put all your eggs in one basket",
+    explanation: "Too many things can go wrong",
     svgPath: "/svg/planning poker_Don't put all .svg",
     color: "#7A1458",
   },
   "40": {
     label: "40",
-    description: "Meterse en un berenjenal",
+    description: "In a real pickle",
+    explanation: "You're stepping into a mess",
     svgPath: "/svg/planning poker_Meterse en un berenjenal.svg",
     color: "#661055",
   },
   "100": {
     label: "100",
     description: "Monster task",
+    explanation: "Run. Just run.",
     svgPath: "/svg/planning poker_Monster task.svg",
     color: "#520D52",
   },
   infinity: {
     label: "\u221E",
     description: "When pigs fly",
+    explanation: "This will never get done",
     svgPath: "/svg/planning poker_When pigs fly.svg",
     color: "#3D0A4F",
   },
   "?": {
     label: "?",
     description: "Here be dragons",
+    explanation: "Unknown territory — can't estimate this",
     svgPath: "/svg/planning poker_Here be dragons.svg",
     color: "#6B3FA0",
   },
   coffee: {
     label: "\u2615",
     description: "Coffee break",
+    explanation: "Let's stop and recharge",
     svgPath: "/svg/planning poker_Coffee break.svg",
     color: "#8B5E3C",
   },
   brownie: {
     label: "\uD83C\uDF6B",
     description: "Eat a brownie",
+    explanation: "Someone got stuck with the bad task",
     svgPath: "/svg/planning poker_Eat a brownie.svg",
     color: "#5C3317",
   },
   yak: {
     label: "\uD83D\uDC02",
     description: "Yak Shaving",
+    explanation: "Endless prerequisites before the real work",
     svgPath: "/svg/planning poker_Yak Shaving.svg",
     color: "#4A6741",
   },

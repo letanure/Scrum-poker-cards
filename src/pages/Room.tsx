@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, type ChangeEvent } from "react";
+import { useState, useCallback, useRef, useMemo, type ChangeEvent } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePokerRoom } from "../hooks/usePokerRoom.ts";
@@ -149,6 +149,25 @@ export function Room() {
   });
 
   const [selectedCard, setSelectedCard] = useState<string | null>(null);
+  const [shout, setShout] = useState<{ text: string; explanation?: string; version: number } | null>(null);
+
+  const shoutVersionRef = useRef(0);
+
+  const handleCardDescription = useCallback((description: string, explanation?: string) => {
+    shoutVersionRef.current += 1;
+    setShout({
+      text: description,
+      explanation,
+      version: shoutVersionRef.current,
+    });
+    const capturedVersion = shoutVersionRef.current;
+    setTimeout(() => {
+      setShout((current) => {
+        if (current?.version === capturedVersion) return null;
+        return current;
+      });
+    }, 3000);
+  }, []);
 
   const effectiveRoomId = roomId ?? "";
   const effectiveName = playerName ?? "";
@@ -278,17 +297,47 @@ export function Room() {
             <Results votes={state.votes} players={state.players} />
           )}
         </AnimatePresence>
+
+        {/* Card description shout — bubbles up from the bottom */}
+        <AnimatePresence>
+          {shout && (
+            <motion.div
+              key={`shout-${shout.version}`}
+              id="room__main__shout"
+              className="pointer-events-none text-center"
+              initial={{ opacity: 0, y: 120 }}
+              animate={{ opacity: [0, 0.5, 0.5, 0], y: -80 }}
+              transition={{ duration: 3, ease: "easeOut", times: [0, 0.1, 0.6, 1] }}
+            >
+              <span
+                className="text-4xl sm:text-6xl font-extrabold italic select-none block"
+                style={{ color: "rgba(186, 48, 51, 0.2)" }}
+              >
+                {`"${shout.text}!"`}
+              </span>
+              {shout.explanation && (
+                <span
+                  className="text-sm sm:text-base font-medium select-none block mt-1"
+                  style={{ color: "rgba(186, 48, 51, 0.3)" }}
+                >
+                  {shout.explanation}
+                </span>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
 
       {/* Card hand at bottom */}
       {(isVoting || isWaiting) && (
         <div id="room__hand-dock" className="sticky bottom-0 z-10" style={{ overflow: "visible" }}>
-          <div id="room__hand-dock__bg" className="absolute inset-x-0 bottom-0 h-full bg-white/80 backdrop-blur-sm border-t border-[#F8ABAA]/30" />
-          <div id="room__hand-dock__cards" className="relative" style={{ overflow: "visible" }}>
+          <div id="room__hand-dock__bg" className="absolute inset-x-0 bottom-0 h-full bg-white/80 border-t border-[#F8ABAA]/30" />
+          <div id="room__hand-dock__cards" className="relative z-10" style={{ overflow: "visible" }}>
             <CardHand
               cards={state.config.cards}
               selectedCard={selectedCard}
               onSelect={handleVote}
+              onCardDescription={handleCardDescription}
               disabled={!isVoting}
             />
           </div>

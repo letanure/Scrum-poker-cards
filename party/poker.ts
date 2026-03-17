@@ -140,7 +140,7 @@ export default class PokerServer implements Party.Server {
   private players: Map<string, Player> = new Map();
   private votes: Map<string, string> = new Map();
   private config: RoomConfig = {
-    cards: ["1", "2", "3", "5", "8", "13", "20", "40", "100", "infinity", "?", "coffee"],
+    cards: ["1", "2", "3", "5", "8", "13", "20", "40", "100", "infinity", "?", "coffee", "brownie", "yak"],
     autoReveal: false,
   };
   private colorIndex = 0;

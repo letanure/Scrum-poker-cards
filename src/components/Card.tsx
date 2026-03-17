@@ -15,6 +15,8 @@ interface CardProps {
   isSelected: boolean;
   onClick?: () => void;
   size?: CardSize;
+  widthOverride?: number;
+  heightOverride?: number;
 }
 
 export function Card({
@@ -23,8 +25,15 @@ export function Card({
   isSelected,
   onClick,
   size = "md",
+  widthOverride,
+  heightOverride,
 }: CardProps) {
-  const dimensions = CARD_SIZES[size];
+  const baseDimensions = CARD_SIZES[size];
+  const dimensions = {
+    ...baseDimensions,
+    width: widthOverride ?? baseDimensions.width,
+    height: heightOverride ?? baseDimensions.height,
+  };
   const cardInfo = getCardInfo(value);
   const label = cardInfo?.label ?? value;
   const svgPath = cardInfo?.svgPath;
