@@ -209,8 +209,7 @@ export default class PokerServer implements Party.Server {
   private topics: string[] = [];
   private currentTopicIndex = 0;
   private topicResults: Map<number, TopicResult> = new Map();
-  private pendingHostPromotion: ReturnType<typeof setTimeout> | null = null;
-  private disconnectedHostName: string | null = null;
+  private pendingDisconnects: Map<string, { name: string; timer: ReturnType<typeof setTimeout> }> = new Map();
 
   constructor(readonly room: Party.Room) {}
 
@@ -397,12 +396,41 @@ export default class PokerServer implements Party.Server {
       return;
     }
 
-    // Returning host within grace period (check original name before dedup)
-    if (this.disconnectedHostName === msg.name && this.pendingHostPromotion) {
-      clearTimeout(this.pendingHostPromotion);
-      this.pendingHostPromotion = null;
-      this.disconnectedHostName = null;
-      this.hostId = sender.id;
+    // Check if this is a reconnecting player (pending disconnect with same name)
+    for (const [oldId, pending] of this.pendingDisconnects.entries()) {
+      if (pending.name === msg.name) {
+        clearTimeout(pending.timer);
+        this.pendingDisconnects.delete(oldId);
+
+        // Take over the old player's spot silently
+        const oldPlayer = this.players.get(oldId);
+        if (oldPlayer) {
+          const wasHost = this.hostId === oldId;
+          const existingVote = this.votes.get(oldId);
+          const existingConfidence = this.confidences.get(oldId);
+
+          this.players.delete(oldId);
+          this.votes.delete(oldId);
+          this.confidences.delete(oldId);
+          this.explanations.delete(oldId);
+
+          const player: Player = {
+            id: sender.id,
+            name: oldPlayer.name,
+            color: oldPlayer.color,
+            hasVoted: oldPlayer.hasVoted,
+          };
+          this.players.set(sender.id, player);
+
+          if (existingVote) this.votes.set(sender.id, existingVote);
+          if (existingConfidence) this.confidences.set(sender.id, existingConfidence);
+          if (wasHost) this.hostId = sender.id;
+
+          // Silent rejoin — no player-left or player-joined, just sync
+          this.broadcastSync();
+          return;
+        }
+      }
     }
 
     // New player
@@ -777,35 +805,38 @@ export default class PokerServer implements Party.Server {
     const player = this.players.get(conn.id);
     if (!player) return;
 
-    const wasHost = this.isHost(conn.id);
     const playerName = player.name;
+    const wasHost = this.isHost(conn.id);
 
-    this.players.delete(conn.id);
-    this.votes.delete(conn.id);
-    this.confidences.delete(conn.id);
-    this.explanations.delete(conn.id);
+    // Grace period: don't broadcast player-left immediately.
+    // If same name rejoins within 3s, it's a tab switch / reconnect.
+    const timer = setTimeout(() => {
+      this.pendingDisconnects.delete(conn.id);
 
-    this.room.broadcast(
-      serialize({ type: "player-left", playerId: conn.id })
-    );
+      // Check if they already rejoined under a new connection ID
+      const rejoinedAsOther = [...this.players.values()].some(
+        (p) => p.name === playerName && p.id !== conn.id
+      );
+      if (rejoinedAsOther) return;
 
-    if (wasHost) {
-      // Grace period: wait 5s for reconnection before promoting
-      this.disconnectedHostName = playerName;
-      if (this.pendingHostPromotion) {
-        clearTimeout(this.pendingHostPromotion);
-      }
-      this.pendingHostPromotion = setTimeout(() => {
-        this.pendingHostPromotion = null;
-        this.disconnectedHostName = null;
-        // Only promote if the host hasn't been restored
-        if (!this.players.has(conn.id)) {
-          this.promoteNextHost();
-          if (this.hostId !== "") {
-            this.broadcastSync();
-          }
+      // Actually remove
+      this.players.delete(conn.id);
+      this.votes.delete(conn.id);
+      this.confidences.delete(conn.id);
+      this.explanations.delete(conn.id);
+
+      this.room.broadcast(
+        serialize({ type: "player-left", playerId: conn.id })
+      );
+
+      if (wasHost) {
+        this.promoteNextHost();
+        if (this.hostId !== "") {
+          this.broadcastSync();
         }
-      }, 5000);
-    }
+      }
+    }, 3000);
+
+    this.pendingDisconnects.set(conn.id, { name: playerName, timer });
   }
 }
