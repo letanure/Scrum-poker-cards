@@ -106,13 +106,22 @@ export const CARD_MAP: Record<string, CardInfo> = {
 export const CARD_BACK_SVG = "/svg/Cover option 2.svg";
 
 export const PRESETS = {
-  fibonacci: ["1", "2", "3", "5", "8", "13", "20", "40", "100", "infinity", "?", "coffee"],
-  tshirt: ["1", "2", "3", "5", "8", "13", "?", "coffee"],
-  powers: ["1", "2", "3", "5", "8", "13", "20", "40", "100", "?", "coffee"],
-  redbooth: ["1", "2", "3", "5", "8", "13", "20", "40", "100", "infinity", "?", "coffee", "brownie", "yak"],
+  all: ["1", "2", "3", "5", "8", "13", "20", "40", "100", "infinity", "?", "coffee", "brownie", "yak"],
+  fibonacci: ["1", "2", "3", "5", "8", "13", "21", "?", "coffee"],
+  simple: ["1", "2", "3", "5", "8", "13", "?", "coffee"],
+  tshirt: ["XS", "S", "M", "L", "XL", "?", "coffee"],
+  powers: ["1", "2", "4", "8", "16", "32", "?", "coffee"],
 } as const;
 
 export type PresetName = keyof typeof PRESETS;
+
+export const PRESET_LABELS: Record<PresetName, string> = {
+  all: "All Cards",
+  fibonacci: "Fibonacci",
+  simple: "Simple",
+  tshirt: "T-Shirt Sizes",
+  powers: "Powers of 2",
+};
 
 export const getCardInfo = (value: string): CardInfo | undefined => {
   return CARD_MAP[value];

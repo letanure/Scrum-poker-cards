@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useMemo, type ChangeEvent } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo, type ChangeEvent } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePokerRoom } from "../hooks/usePokerRoom.ts";
@@ -7,7 +7,7 @@ import { CardHand } from "../components/CardHand.tsx";
 import { Results } from "../components/Results.tsx";
 import { HostControls } from "../components/HostControls.tsx";
 import { ShareButton } from "../components/ShareButton.tsx";
-import { PRESETS, type PresetName } from "../lib/cards.ts";
+import { PRESETS, PRESET_LABELS, type PresetName } from "../lib/cards.ts";
 import { CONFIDENCE_LEVELS, type ConfidenceLevel } from "../lib/protocol.ts";
 
 function NameModal({
@@ -112,7 +112,7 @@ function ConfigPanel({
               onConfigure([...PRESETS[presetName]], autoReveal)
             }
           >
-            {presetName}
+            {PRESET_LABELS[presetName]}
           </motion.button>
         ))}
       </div>
@@ -183,6 +183,15 @@ export function Room() {
       ? String((rawState as Record<string, unknown>)["playerName"])
       : null;
 
+  const locationPreset: PresetName =
+    rawState !== null &&
+    typeof rawState === "object" &&
+    "preset" in rawState &&
+    typeof (rawState as Record<string, unknown>)["preset"] === "string" &&
+    Object.hasOwn(PRESETS, (rawState as Record<string, unknown>)["preset"] as string)
+      ? ((rawState as Record<string, unknown>)["preset"] as PresetName)
+      : "all";
+
   const [playerName, setPlayerName] = useState<string | null>(() => {
     if (locationPlayerName) return locationPlayerName;
     return localStorage.getItem("poker-name");
@@ -225,6 +234,21 @@ export function Room() {
     playerId,
     voteVersions,
   } = usePokerRoom(effectiveRoomId, effectiveName);
+
+  const initialConfigSentRef = useRef(false);
+
+  useEffect(() => {
+    if (
+      !initialConfigSentRef.current &&
+      state &&
+      isConnected &&
+      state.hostId === playerId &&
+      (state.phase === "waiting" || state.phase === "voting")
+    ) {
+      initialConfigSentRef.current = true;
+      configure([...PRESETS[locationPreset]], state.config.autoReveal);
+    }
+  }, [state, isConnected, playerId, locationPreset, configure]);
 
   const handleNameSubmit = useCallback((name: string) => {
     localStorage.setItem("poker-name", name);

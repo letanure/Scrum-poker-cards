@@ -1,14 +1,22 @@
 import { useState, useCallback, type ChangeEvent, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { generateRoomId } from "../lib/cards.ts";
-import { Card } from "../components/Card.tsx";
+import { generateRoomId, PRESETS, PRESET_LABELS, CARD_MAP, type PresetName } from "../lib/cards.ts";
+import { CardBackground } from "../components/CardBackground.tsx";
 
 export function Landing() {
   const navigate = useNavigate();
   const [name, setName] = useState(() => localStorage.getItem("poker-name") ?? "");
   const [joinLink, setJoinLink] = useState("");
   const [showJoin, setShowJoin] = useState(false);
+  const [selectedPreset, setSelectedPreset] = useState<PresetName>("all");
+
+  const PRESET_NAMES = Object.keys(PRESETS) as PresetName[];
+
+  const presetPreview = PRESETS[selectedPreset].map((value) => {
+    const card = CARD_MAP[value];
+    return card ? card.label : value;
+  }).join("  ");
 
   const handleNameChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     setName(e.target.value);
@@ -18,8 +26,8 @@ export function Landing() {
     if (!name.trim()) return;
     localStorage.setItem("poker-name", name.trim());
     const roomId = generateRoomId();
-    navigate(`/room/${roomId}`, { state: { playerName: name.trim() } });
-  }, [name, navigate]);
+    navigate(`/room/${roomId}`, { state: { playerName: name.trim(), preset: selectedPreset } });
+  }, [name, navigate, selectedPreset]);
 
   const extractRoomId = (input: string): string | null => {
     // Handle full URL like https://host/room/some-room-id
@@ -44,19 +52,8 @@ export function Landing() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F8ABAA] via-[#F0649B] to-[#BA3033] flex flex-col items-center justify-center px-4 py-8 relative overflow-hidden">
-      {/* Decorative cards */}
-      <div className="absolute top-8 left-8 opacity-30 rotate-[-15deg] hidden md:block">
-        <Card value="5" isFlipped={false} isSelected={false} size="lg" />
-      </div>
-      <div className="absolute top-16 right-12 opacity-30 rotate-[12deg] hidden md:block">
-        <Card value="13" isFlipped={true} isSelected={false} size="lg" />
-      </div>
-      <div className="absolute bottom-12 left-16 opacity-30 rotate-[8deg] hidden md:block">
-        <Card value="?" isFlipped={false} isSelected={false} size="lg" />
-      </div>
-      <div className="absolute bottom-8 right-8 opacity-30 rotate-[-10deg] hidden md:block">
-        <Card value="8" isFlipped={true} isSelected={false} size="lg" />
-      </div>
+      {/* Animated card background */}
+      <CardBackground />
 
       {/* Main content */}
       <motion.div
@@ -94,6 +91,34 @@ export function Landing() {
               className="w-full px-4 py-3 rounded-xl border border-[#F8ABAA]/50 bg-white text-gray-700 placeholder-gray-400 outline-none focus:border-[#BA3033] focus:ring-2 focus:ring-[#BA3033]/20 transition-all text-sm"
               maxLength={30}
             />
+          </div>
+
+          {/* Preset selector */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-600 mb-1.5">
+              Card deck
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {PRESET_NAMES.map((presetName) => (
+                <motion.button
+                  key={presetName}
+                  type="button"
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold cursor-pointer transition-colors ${
+                    selectedPreset === presetName
+                      ? "bg-[#BA3033] text-white shadow-md"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setSelectedPreset(presetName)}
+                >
+                  {PRESET_LABELS[presetName]}
+                </motion.button>
+              ))}
+            </div>
+            <p className="mt-2 text-xs text-gray-400 tracking-wide truncate">
+              {presetPreview}
+            </p>
           </div>
 
           {/* Create button */}
