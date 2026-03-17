@@ -4,3 +4,4 @@ dist/
 .superpowers/
 .claude/
 .env
+.local/
