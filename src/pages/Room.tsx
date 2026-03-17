@@ -271,6 +271,7 @@ function RoomInner({
     playerId,
     voteVersions,
     kicked,
+    replaced,
     kick,
     transferHost,
   } = usePokerRoom(roomId, playerName);
@@ -382,6 +383,33 @@ function RoomInner({
           >
             Back to Home
           </Link>
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (replaced) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#F8ABAA]/20 via-white to-[#F0649B]/10 flex items-center justify-center px-4">
+        <motion.div
+          className="bg-white rounded-2xl shadow-xl p-8 max-w-sm w-full flex flex-col items-center gap-4 text-center"
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 300, damping: 25 }}
+        >
+          <span className="text-4xl">📱</span>
+          <h2 className="text-lg font-bold text-[#7F6CB1]">
+            Opened in another tab
+          </h2>
+          <p className="text-sm text-gray-500">
+            This session is now active in a different tab. Close this one or reload to reconnect.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-2 px-6 py-3 rounded-xl bg-[#7F6CB1] text-white font-bold text-sm shadow-md hover:opacity-90 transition-opacity cursor-pointer"
+          >
+            Reconnect here
+          </button>
         </motion.div>
       </div>
     );

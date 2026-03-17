@@ -187,7 +187,8 @@ type ServerMessage =
   | ErrorMessage
   | ExplanationMessage
   | TopicsUpdatedMessage
-  | KickedMessage;
+  | KickedMessage
+  | { type: "replaced" };
 
 function serialize(message: ServerMessage): string {
   return JSON.stringify(message);
@@ -358,9 +359,10 @@ export default class PokerServer implements Party.Server {
       // Take over the existing player's spot
       const wasHost = this.hostId === existingId;
 
-      // Close old connection silently
+      // Tell old connection it's been replaced, then close it
       for (const conn of this.room.getConnections()) {
         if (conn.id === existingId) {
+          conn.send(serialize({ type: "replaced" }));
           conn.close();
           break;
         }

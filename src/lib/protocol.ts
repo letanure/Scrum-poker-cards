@@ -183,6 +183,10 @@ export type KickedMessage = {
   type: "kicked";
 };
 
+export type ReplacedMessage = {
+  type: "replaced";
+};
+
 export type ServerMessage =
   | SyncMessage
   | PlayerJoinedMessage
@@ -193,4 +197,5 @@ export type ServerMessage =
   | ErrorMessage
   | ExplanationMessage
   | TopicsUpdatedMessage
-  | KickedMessage;
+  | KickedMessage
+  | ReplacedMessage;

@@ -26,6 +26,7 @@ export function usePokerRoom(roomId: string, playerName: string) {
   const [isConnected, setIsConnected] = useState(false);
   const [voteVersions, setVoteVersions] = useState<Record<string, number>>({});
   const [playerId, setPlayerId] = useState("");
+  const [replaced, setReplaced] = useState(false);
   const [kicked, setKicked] = useState(() => {
     const kickedRooms = localStorage.getItem("poker-kicked-rooms");
     if (kickedRooms) {
@@ -162,6 +163,11 @@ export function usePokerRoom(roomId: string, playerName: string) {
           });
           break;
         }
+        case "replaced": {
+          setReplaced(true);
+          socket.close();
+          break;
+        }
         case "kicked": {
           setKicked(true);
           try {
@@ -287,6 +293,7 @@ export function usePokerRoom(roomId: string, playerName: string) {
     playerId,
     voteVersions,
     kicked,
+    replaced,
     kick,
     transferHost,
   };
