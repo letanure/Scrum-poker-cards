@@ -6,6 +6,8 @@ interface TopicBarProps {
   isHost: boolean;
   onPrev: () => void;
   onNext: () => void;
+  onToggleEdit?: () => void;
+  isEditing?: boolean;
 }
 
 export function TopicBar({
@@ -14,14 +16,15 @@ export function TopicBar({
   isHost,
   onPrev,
   onNext,
+  onToggleEdit,
+  isEditing = false,
 }: TopicBarProps) {
-  if (topics.length === 0) return null;
-
+  const hasTopic = topics.length > 0;
   const isFirst = currentTopicIndex <= 0;
   const isLast = currentTopicIndex >= topics.length - 1;
   const isDone = currentTopicIndex >= topics.length;
   const displayIndex = isDone ? topics.length : currentTopicIndex + 1;
-  const currentTopic = isDone ? "All topics done" : topics[currentTopicIndex];
+  const currentTopic = isDone ? "All topics done" : (topics[currentTopicIndex] ?? "");
 
   return (
     <motion.div
@@ -31,9 +34,9 @@ export function TopicBar({
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: "spring", stiffness: 200, damping: 20 }}
     >
-      {isHost && (
+      {isHost && hasTopic && (
         <motion.button
-          className="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-bold cursor-pointer transition-colors disabled:opacity-30 disabled:cursor-not-allowed bg-gray-100 text-gray-600 hover:bg-gray-200"
+          className="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-bold cursor-pointer transition-colors disabled:opacity-30 disabled:cursor-not-allowed bg-gray-100 text-gray-600 hover:bg-gray-200 shrink-0"
           whileHover={!isFirst ? { scale: 1.1 } : undefined}
           whileTap={!isFirst ? { scale: 0.9 } : undefined}
           onClick={onPrev}
@@ -47,33 +50,43 @@ export function TopicBar({
       )}
 
       <div className="flex-1 flex items-center gap-2 min-w-0">
-        <span className="text-xs font-bold text-[#BA3033] whitespace-nowrap">
-          {displayIndex} / {topics.length}
-        </span>
-        <span className="text-sm text-gray-600 truncate" title={currentTopic}>
-          {currentTopic}
-        </span>
+        {hasTopic ? (
+          <>
+            <span className="text-xs font-bold text-[#BA3033] whitespace-nowrap">
+              {displayIndex} / {topics.length}
+            </span>
+            <span className="text-sm text-gray-600 truncate" title={currentTopic}>
+              {currentTopic}
+            </span>
+          </>
+        ) : (
+          <span className="text-xs text-gray-400 italic">
+            No topics added
+          </span>
+        )}
       </div>
 
       {/* Progress dots */}
-      <div className="hidden sm:flex items-center gap-1">
-        {topics.map((_, i) => (
-          <div
-            key={i}
-            className={`w-1.5 h-1.5 rounded-full transition-colors ${
-              i === currentTopicIndex
-                ? "bg-[#BA3033]"
-                : i < currentTopicIndex
-                  ? "bg-[#94A979]"
-                  : "bg-gray-300"
-            }`}
-          />
-        ))}
-      </div>
+      {hasTopic && (
+        <div className="hidden sm:flex items-center gap-1 shrink-0">
+          {topics.map((_, i) => (
+            <div
+              key={i}
+              className={`w-1.5 h-1.5 rounded-full transition-colors ${
+                i === currentTopicIndex
+                  ? "bg-[#BA3033]"
+                  : i < currentTopicIndex
+                    ? "bg-[#94A979]"
+                    : "bg-gray-300"
+              }`}
+            />
+          ))}
+        </div>
+      )}
 
-      {isHost && (
+      {isHost && hasTopic && (
         <motion.button
-          className="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-bold cursor-pointer transition-colors disabled:opacity-30 disabled:cursor-not-allowed bg-gray-100 text-gray-600 hover:bg-gray-200"
+          className="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-bold cursor-pointer transition-colors disabled:opacity-30 disabled:cursor-not-allowed bg-gray-100 text-gray-600 hover:bg-gray-200 shrink-0"
           whileHover={!isLast && !isDone ? { scale: 1.1 } : undefined}
           whileTap={!isLast && !isDone ? { scale: 0.9 } : undefined}
           onClick={onNext}
@@ -83,6 +96,31 @@ export function TopicBar({
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
             <path d="M9 18l6-6-6-6" />
           </svg>
+        </motion.button>
+      )}
+
+      {/* Edit/add topics toggle — host only */}
+      {isHost && onToggleEdit && (
+        <motion.button
+          className={`w-8 h-8 flex items-center justify-center rounded-lg cursor-pointer transition-colors shrink-0 ${
+            isEditing
+              ? "bg-[#BA3033] text-white"
+              : "bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-[#BA3033]"
+          }`}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={onToggleEdit}
+          title={hasTopic ? "Edit topics" : "Add topics"}
+        >
+          {hasTopic ? (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+              <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          )}
         </motion.button>
       )}
     </motion.div>

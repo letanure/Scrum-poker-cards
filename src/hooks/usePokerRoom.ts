@@ -14,6 +14,7 @@ import type {
   NextTopicMessage,
   PrevTopicMessage,
   KickMessage,
+  TransferHostMessage,
   ConfidenceLevel,
 } from "../lib/protocol.ts";
 
@@ -25,7 +26,14 @@ export function usePokerRoom(roomId: string, playerName: string) {
   const [isConnected, setIsConnected] = useState(false);
   const [voteVersions, setVoteVersions] = useState<Record<string, number>>({});
   const [playerId, setPlayerId] = useState("");
-  const [kicked, setKicked] = useState(false);
+  const [kicked, setKicked] = useState(() => {
+    const kickedRooms = localStorage.getItem("poker-kicked-rooms");
+    if (kickedRooms) {
+      const rooms: unknown = JSON.parse(kickedRooms);
+      if (Array.isArray(rooms) && rooms.includes(roomId)) return true;
+    }
+    return false;
+  });
 
   const socket = usePartySocket({
     host: PARTYKIT_HOST,
@@ -156,6 +164,14 @@ export function usePokerRoom(roomId: string, playerName: string) {
         }
         case "kicked": {
           setKicked(true);
+          try {
+            const existing = localStorage.getItem("poker-kicked-rooms");
+            const rooms: string[] = existing ? JSON.parse(existing) as string[] : [];
+            if (!rooms.includes(roomId)) {
+              rooms.push(roomId);
+              localStorage.setItem("poker-kicked-rooms", JSON.stringify(rooms));
+            }
+          } catch { /* ignore storage errors */ }
           break;
         }
         case "error": {
@@ -248,6 +264,14 @@ export function usePokerRoom(roomId: string, playerName: string) {
     [socket],
   );
 
+  const transferHost = useCallback(
+    (targetPlayerId: string) => {
+      const msg: TransferHostMessage = { type: "transfer-host", playerId: targetPlayerId };
+      socket.send(JSON.stringify(msg));
+    },
+    [socket],
+  );
+
   return {
     state,
     isConnected,
@@ -264,5 +288,6 @@ export function usePokerRoom(roomId: string, playerName: string) {
     voteVersions,
     kicked,
     kick,
+    transferHost,
   };
 }

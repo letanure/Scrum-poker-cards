@@ -606,6 +606,21 @@ export default class PokerServer implements Party.Server {
     this.checkAutoReveal();
   }
 
+  private handleTransferHost(sender: Party.Connection, msg: { playerId: string }): void {
+    if (!this.isHost(sender.id)) {
+      this.sendError(sender, "Only the host can transfer host");
+      return;
+    }
+
+    if (!this.players.has(msg.playerId)) {
+      this.sendError(sender, "Player not found");
+      return;
+    }
+
+    this.hostId = msg.playerId;
+    this.broadcastSync();
+  }
+
   private handleConfigure(
     sender: Party.Connection,
     msg: ConfigureMessage
@@ -669,6 +684,9 @@ export default class PokerServer implements Party.Server {
         break;
       case "kick":
         this.handleKick(sender, parsed);
+        break;
+      case "transfer-host":
+        this.handleTransferHost(sender, parsed);
         break;
       default:
         this.sendError(sender, "Unknown message type");

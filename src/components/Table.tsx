@@ -19,6 +19,7 @@ interface TableProps {
   onNewRound?: () => void;
   onNextTopic?: () => void;
   onKick?: (playerId: string) => void;
+  onMakeHost?: (playerId: string) => void;
   hasTopics?: boolean;
   isLastTopic?: boolean;
   phase?: string;
@@ -34,6 +35,7 @@ export function Table({
   onNewRound,
   onNextTopic,
   onKick,
+  onMakeHost,
   hasTopics = false,
   isLastTopic = false,
   phase,
@@ -61,6 +63,11 @@ export function Table({
             onKick={
               onKick && player.id !== currentUserId
                 ? () => onKick(player.id)
+                : undefined
+            }
+            onMakeHost={
+              onMakeHost && player.id !== currentUserId && !player.isHost
+                ? () => onMakeHost(player.id)
                 : undefined
             }
           />

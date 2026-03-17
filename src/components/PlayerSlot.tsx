@@ -11,6 +11,7 @@ interface PlayerSlotProps {
   isCurrentUser: boolean;
   voteVersion: number;
   onKick?: () => void;
+  onMakeHost?: () => void;
 }
 
 function getInitial(name: string): string {
@@ -26,6 +27,7 @@ export function PlayerSlot({
   isCurrentUser,
   voteVersion,
   onKick,
+  onMakeHost,
 }: PlayerSlotProps) {
   const isRevealed = vote !== null;
   const controls = useAnimationControls();
@@ -50,18 +52,6 @@ export function PlayerSlot({
       animate={{ scale: 1, opacity: 1 }}
       transition={{ type: "spring", stiffness: 300, damping: 20 }}
     >
-      {/* Kick button */}
-      {onKick && (
-        <button
-          onClick={onKick}
-          className="absolute -top-1 -right-1 z-10 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:bg-red-600 shadow-sm"
-          aria-label={`Remove ${name}`}
-        >
-          <svg viewBox="0 0 12 12" fill="currentColor" className="w-2.5 h-2.5">
-            <path d="M9.5 3.2L8.8 2.5 6 5.3 3.2 2.5 2.5 3.2 5.3 6 2.5 8.8l.7.7L6 6.7l2.8 2.8.7-.7L6.7 6z" />
-          </svg>
-        </button>
-      )}
       {/* Card area */}
       <div id="player-slot__card-area" className="h-[130px] flex items-end justify-center">
         <AnimatePresence>
@@ -114,6 +104,34 @@ export function PlayerSlot({
       <span className="text-sm text-gray-600 font-semibold truncate max-w-[90px]">
         {name}
       </span>
+
+      {/* Host actions — visible on hover */}
+      {(onKick || onMakeHost) && (
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          {onMakeHost && (
+            <button
+              onClick={onMakeHost}
+              className="w-6 h-6 rounded-full bg-[#7F6CB1]/10 text-[#7F6CB1] flex items-center justify-center cursor-pointer hover:bg-[#7F6CB1]/20 transition-colors"
+              title="Make host"
+            >
+              <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3">
+                <path d="M8 1l2.2 4.5L15 6.3l-3.5 3.4.8 4.8L8 12.3 3.7 14.5l.8-4.8L1 6.3l4.8-.8z" />
+              </svg>
+            </button>
+          )}
+          {onKick && (
+            <button
+              onClick={onKick}
+              className="w-6 h-6 rounded-full bg-red-50 text-red-400 flex items-center justify-center cursor-pointer hover:bg-red-100 hover:text-red-500 transition-colors"
+              title="Remove player"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+      )}
     </motion.div>
   );
 }

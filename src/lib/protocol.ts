@@ -110,6 +110,11 @@ export type KickMessage = {
   playerId: string;
 };
 
+export type TransferHostMessage = {
+  type: "transfer-host";
+  playerId: string;
+};
+
 export type ClientMessage =
   | JoinMessage
   | VoteMessage
@@ -121,7 +126,8 @@ export type ClientMessage =
   | SetTopicsMessage
   | NextTopicMessage
   | PrevTopicMessage
-  | KickMessage;
+  | KickMessage
+  | TransferHostMessage;
 
 // --- Server → Client messages ---
 
