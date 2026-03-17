@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F8ABAA"/>
+      <stop offset="50%" style="stop-color:#F0649B"/>
+      <stop offset="100%" style="stop-color:#BA3033"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <!-- Decorative cards (tilted, semi-transparent) -->
+  <g opacity="0.15">
+    <rect x="80" y="120" width="120" height="168" rx="12" fill="white" transform="rotate(-15 140 204)"/>
+    <rect x="180" y="100" width="120" height="168" rx="12" fill="white" transform="rotate(-8 240 184)"/>
+    <rect x="900" y="130" width="120" height="168" rx="12" fill="white" transform="rotate(12 960 214)"/>
+    <rect x="1000" y="110" width="120" height="168" rx="12" fill="white" transform="rotate(18 1060 194)"/>
+    <rect x="100" y="380" width="120" height="168" rx="12" fill="white" transform="rotate(8 160 464)"/>
+    <rect x="980" y="360" width="120" height="168" rx="12" fill="white" transform="rotate(-10 1040 444)"/>
+  </g>
+
+  <!-- Title -->
+  <text x="600" y="260" text-anchor="middle" font-family="Nunito,Arial,sans-serif" font-weight="800" font-size="72" fill="white">
+    Scrum Poker Cards
+  </text>
+
+  <!-- Subtitle -->
+  <text x="600" y="330" text-anchor="middle" font-family="Nunito,Arial,sans-serif" font-weight="400" font-size="32" fill="white" opacity="0.85">
+    Free planning poker for agile teams
+  </text>
+
+  <!-- Features -->
+  <text x="600" y="420" text-anchor="middle" font-family="Nunito,Arial,sans-serif" font-weight="600" font-size="22" fill="white" opacity="0.7">
+    Illustrated cards  ·  Real-time sessions  ·  No signup
+  </text>
+
+  <!-- URL -->
+  <text x="600" y="560" text-anchor="middle" font-family="Nunito,Arial,sans-serif" font-weight="700" font-size="26" fill="white" opacity="0.6">
+    scrumpoker.work
+  </text>
+</svg>

@@ -12,6 +12,7 @@ import { TopicBar } from "../components/TopicBar.tsx";
 import { TopicSummary } from "../components/TopicSummary.tsx";
 import { PRESETS, PRESET_LABELS, type PresetName } from "../lib/cards.ts";
 import { CONFIDENCE_LEVELS, type ConfidenceLevel } from "../lib/protocol.ts";
+import { trackEvent } from "../lib/analytics.ts";
 
 function NameModal({
   onSubmit,
@@ -237,6 +238,10 @@ function RoomInner({
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [hostToast, setHostToast] = useState(false);
   const prevHostIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    trackEvent("room_joined", { roomId });
+  }, [roomId]);
 
   const shoutVersionRef = useRef(0);
 

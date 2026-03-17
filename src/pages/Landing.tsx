@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { generateRoomId, PRESETS, PRESET_LABELS, CARD_MAP, type PresetName } from "../lib/cards.ts";
 import { CardBackground } from "../components/CardBackground.tsx";
+import { Footer } from "../components/Footer.tsx";
+import { trackEvent } from "../lib/analytics.ts";
 
 export function Landing() {
   const navigate = useNavigate();
@@ -26,6 +28,7 @@ export function Landing() {
     if (!name.trim()) return;
     localStorage.setItem("poker-name", name.trim());
     const roomId = generateRoomId();
+    trackEvent("session_created", { preset: selectedPreset });
     navigate(`/room/${roomId}`, { state: { playerName: name.trim(), preset: selectedPreset } });
   }, [name, navigate, selectedPreset]);
 
@@ -186,7 +189,14 @@ export function Landing() {
             </span>
           ))}
         </div>
+
+        {/* SEO description */}
+        <h2 className="text-white/50 text-xs text-center max-w-sm leading-relaxed font-normal">
+          Open-source planning poker with illustrated cards by Redbooth. Create a session, share the link, estimate stories as a team — all in real-time, right in your browser.
+        </h2>
       </motion.div>
+
+      <Footer />
     </div>
   );
 }

@@ -3,3 +3,4 @@ dist/
 .partykit/
 .superpowers/
 .claude/
+.env
