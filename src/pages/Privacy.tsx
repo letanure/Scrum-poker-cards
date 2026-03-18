@@ -2,14 +2,14 @@ import { Link } from "react-router-dom";
 import { Trans, useTranslation } from "react-i18next";
 
 export function Privacy() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   return (
     <div className="min-h-screen bg-white">
       <div className="h-1 bg-gradient-to-r from-[#F8ABAA] via-[#F0649B] to-[#BA3033]" />
       <main className="max-w-[640px] mx-auto px-6 py-12">
         <Link
-          to="/"
+          to={`/${i18n.language}`}
           className="text-sm text-gray-400 hover:text-[#BA3033] transition-colors"
         >
           {t("privacy.backToApp")}

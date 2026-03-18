@@ -235,7 +235,7 @@ function RoomInner({
   playerName: string;
   preset: PresetName;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const [selectedCard, setSelectedCard] = useState<string | null>(null);
   const [selectedConfidence, setSelectedConfidence] = useState<ConfidenceLevel>(CONFIDENCE_LEVELS.confident);
@@ -389,7 +389,7 @@ function RoomInner({
             {t("room.kickedDescription")}
           </p>
           <Link
-            to="/"
+            to={`/${i18n.language}`}
             className="mt-2 px-6 py-3 rounded-xl bg-[#BA3033] text-white font-bold text-sm shadow-md hover:opacity-90 transition-opacity"
           >
             {t("room.backToHome")}

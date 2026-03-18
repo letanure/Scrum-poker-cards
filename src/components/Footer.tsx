@@ -2,16 +2,17 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 export function Footer() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
 
   return (
     <footer className="z-10 mt-6 flex flex-col items-center gap-1.5 text-white/40 text-[11px]">
       <nav className="flex items-center gap-2">
-        <Link to="/about" className="hover:text-white/60 transition-colors">
+        <Link to={`/${lang}/about`} className="hover:text-white/60 transition-colors">
           {t("footer.about")}
         </Link>
         <span>&middot;</span>
-        <Link to="/privacy" className="hover:text-white/60 transition-colors">
+        <Link to={`/${lang}/privacy`} className="hover:text-white/60 transition-colors">
           {t("footer.privacy")}
         </Link>
         <span>&middot;</span>

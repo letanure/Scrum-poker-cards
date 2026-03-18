@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { SUPPORTED_LANGUAGES, type SupportedLanguage } from "../i18n/index.ts";
 
@@ -24,9 +25,19 @@ export function LanguageSwitcher() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const handleSelect = (lang: SupportedLanguage) => {
     void i18n.changeLanguage(lang);
     setOpen(false);
+
+    // Update URL if on a localized page (/:lang or /:lang/about etc.)
+    const pathParts = location.pathname.split("/");
+    if (pathParts.length >= 2 && LANG_CODES.includes(pathParts[1] as SupportedLanguage)) {
+      const rest = pathParts.slice(2).join("/");
+      navigate(`/${lang}${rest ? `/${rest}` : ""}`, { replace: true });
+    }
   };
 
   return (

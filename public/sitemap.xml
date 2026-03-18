@@ -1,6 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://scrumpoker.work/</loc><priority>1.0</priority></url>
-  <url><loc>https://scrumpoker.work/about</loc><priority>0.5</priority></url>
-  <url><loc>https://scrumpoker.work/privacy</loc><priority>0.3</priority></url>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://scrumpoker.work/en</loc>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://scrumpoker.work/en"/>
+    <xhtml:link rel="alternate" hreflang="pt" href="https://scrumpoker.work/pt"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://scrumpoker.work/es"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://scrumpoker.work/de"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://scrumpoker.work/fr"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://scrumpoker.work/ja"/>
+    <xhtml:link rel="alternate" hreflang="zh" href="https://scrumpoker.work/zh"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://scrumpoker.work/ko"/>
+    <xhtml:link rel="alternate" hreflang="hi" href="https://scrumpoker.work/hi"/>
+    <xhtml:link rel="alternate" hreflang="pl" href="https://scrumpoker.work/pl"/>
+    <xhtml:link rel="alternate" hreflang="nl" href="https://scrumpoker.work/nl"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://scrumpoker.work/it"/>
+  </url>
+  <url><loc>https://scrumpoker.work/en/about</loc><priority>0.5</priority></url>
+  <url><loc>https://scrumpoker.work/en/privacy</loc><priority>0.3</priority></url>
 </urlset>
