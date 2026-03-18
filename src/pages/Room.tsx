@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect, useMemo, type ChangeEvent } from "react";
 import { useParams, useLocation, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { usePokerRoom } from "../hooks/usePokerRoom.ts";
 import { Table } from "../components/Table.tsx";
 import { CardHand } from "../components/CardHand.tsx";
@@ -8,9 +9,10 @@ import { Results } from "../components/Results.tsx";
 import { HostControls } from "../components/HostControls.tsx";
 import { ShareButton } from "../components/ShareButton.tsx";
 import { TopicBar } from "../components/TopicBar.tsx";
+import { LanguageSwitcher } from "../components/LanguageSwitcher.tsx";
 
 import { TopicSummary } from "../components/TopicSummary.tsx";
-import { PRESETS, PRESET_LABELS, type PresetName } from "../lib/cards.ts";
+import { PRESETS, type PresetName } from "../lib/cards.ts";
 import { CONFIDENCE_LEVELS, type ConfidenceLevel } from "../lib/protocol.ts";
 import { trackEvent } from "../lib/analytics.ts";
 
@@ -19,6 +21,7 @@ function NameModal({
 }: {
   onSubmit: (name: string) => void;
 }) {
+  const { t } = useTranslation();
   const [inputName, setInputName] = useState("");
 
   const handleSubmit = useCallback(() => {
@@ -37,7 +40,7 @@ function NameModal({
         transition={{ type: "spring", stiffness: 300, damping: 25 }}
       >
         <h2 className="text-lg font-bold text-[#BA3033] text-center">
-          Enter your name
+          {t("room.enterName")}
         </h2>
         <input
           type="text"
@@ -48,7 +51,7 @@ function NameModal({
           onKeyDown={(e) => {
             if (e.key === "Enter") handleSubmit();
           }}
-          placeholder="Your name..."
+          placeholder={t("room.namePlaceholder")}
           className="w-full px-4 py-3 rounded-xl border border-[#F8ABAA]/50 bg-white text-gray-700 placeholder-gray-400 outline-none focus:border-[#BA3033] focus:ring-2 focus:ring-[#BA3033]/20 transition-all text-sm"
           maxLength={30}
           autoFocus
@@ -60,7 +63,7 @@ function NameModal({
           onClick={handleSubmit}
           disabled={!inputName.trim()}
         >
-          Join Room
+          {t("room.joinRoom")}
         </motion.button>
       </motion.div>
     </div>
@@ -76,6 +79,7 @@ function ConfigPanel({
   autoReveal: boolean;
   onConfigure: (cards: string[], autoReveal: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const PRESET_NAMES = Object.keys(PRESETS) as PresetName[];
 
   const activePreset = useMemo(() => {
@@ -99,7 +103,7 @@ function ConfigPanel({
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: "spring", stiffness: 200, damping: 20 }}
     >
-      <h3 className="text-sm font-bold text-gray-600">Room Settings</h3>
+      <h3 className="text-sm font-bold text-gray-600">{t("room.config.title")}</h3>
 
       <div id="room__config-panel__presets" className="flex flex-wrap gap-2">
         {PRESET_NAMES.map((presetName) => (
@@ -116,7 +120,7 @@ function ConfigPanel({
               onConfigure([...PRESETS[presetName]], autoReveal)
             }
           >
-            {PRESET_LABELS[presetName]}
+            {t(`presets.${presetName}`)}
           </motion.button>
         ))}
       </div>
@@ -129,18 +133,12 @@ function ConfigPanel({
           className="w-4 h-4 rounded border-gray-300 text-[#BA3033] focus:ring-[#BA3033]"
         />
         <span className="text-xs text-gray-600 font-medium">
-          Auto-reveal when all vote
+          {t("room.config.autoReveal")}
         </span>
       </label>
     </motion.div>
   );
 }
-
-const CONFIDENCE_OPTIONS = [
-  { value: CONFIDENCE_LEVELS.confident, label: "Confident", emoji: "\uD83D\uDE0E", color: "#94A979", bgColor: "#94A979/20" },
-  { value: CONFIDENCE_LEVELS.guessing, label: "Guessing", emoji: "\uD83E\uDD14", color: "#F39C12", bgColor: "#F39C12/20" },
-  { value: CONFIDENCE_LEVELS.noIdea, label: "No idea", emoji: "\uD83E\uDD37", color: "#E74C3C", bgColor: "#E74C3C/20" },
-] as const;
 
 function ConfidenceToggle({
   selected,
@@ -149,6 +147,14 @@ function ConfidenceToggle({
   selected: ConfidenceLevel;
   onSelect: (level: ConfidenceLevel) => void;
 }) {
+  const { t } = useTranslation();
+
+  const CONFIDENCE_OPTIONS = [
+    { value: CONFIDENCE_LEVELS.confident, label: t("room.confidence.confident"), emoji: "\uD83D\uDE0E", color: "#94A979", bgColor: "#94A979/20" },
+    { value: CONFIDENCE_LEVELS.guessing, label: t("room.confidence.guessing"), emoji: "\uD83E\uDD14", color: "#F39C12", bgColor: "#F39C12/20" },
+    { value: CONFIDENCE_LEVELS.noIdea, label: t("room.confidence.noIdea"), emoji: "\uD83E\uDD37", color: "#E74C3C", bgColor: "#E74C3C/20" },
+  ] as const;
+
   return (
     <div id="room__confidence-toggle" className="flex items-center justify-center gap-2 py-2">
       {CONFIDENCE_OPTIONS.map((option) => {
@@ -229,6 +235,7 @@ function RoomInner({
   playerName: string;
   preset: PresetName;
 }) {
+  const { t } = useTranslation();
 
   const [selectedCard, setSelectedCard] = useState<string | null>(null);
   const [selectedConfidence, setSelectedConfidence] = useState<ConfidenceLevel>(CONFIDENCE_LEVELS.confident);
@@ -376,16 +383,16 @@ function RoomInner({
         >
           <span className="text-4xl">👋</span>
           <h2 className="text-lg font-bold text-[#BA3033]">
-            You were removed from this session
+            {t("room.kicked")}
           </h2>
           <p className="text-sm text-gray-500">
-            The host has removed you from the room.
+            {t("room.kickedDescription")}
           </p>
           <Link
             to="/"
             className="mt-2 px-6 py-3 rounded-xl bg-[#BA3033] text-white font-bold text-sm shadow-md hover:opacity-90 transition-opacity"
           >
-            Back to Home
+            {t("room.backToHome")}
           </Link>
         </motion.div>
       </div>
@@ -406,7 +413,7 @@ function RoomInner({
             transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
           />
           <p className="text-sm text-gray-500 font-medium">
-            Connecting to room...
+            {t("room.connectingToRoom")}
           </p>
         </motion.div>
       </div>
@@ -438,7 +445,7 @@ function RoomInner({
       <header id="room__header" className="flex items-center justify-between px-4 py-3 border-b border-[#F8ABAA]/30 bg-white/80 backdrop-blur-sm z-20">
         <div id="room__header__info" className="flex items-center gap-3">
           <h1 className="text-lg font-bold text-[#BA3033] font-[Nunito]">
-            Scrum Poker
+            {t("room.title")}
           </h1>
           {state.topic && !hasTopics && (
             <span className="text-sm text-gray-500 truncate max-w-[200px]">
@@ -447,8 +454,9 @@ function RoomInner({
           )}
         </div>
         <div id="room__header__actions" className="flex items-center gap-3">
+          <LanguageSwitcher />
           <span className="text-xs text-gray-400 font-medium">
-            {state.players.length} player{state.players.length !== 1 ? "s" : ""}
+            {t("room.playerCount", { count: state.players.length })}
           </span>
           <ShareButton roomId={roomId} />
         </div>
@@ -561,7 +569,7 @@ function RoomInner({
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
           >
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 shrink-0">
-              <span className="text-sm font-bold text-gray-700">Topics</span>
+              <span className="text-sm font-bold text-gray-700">{t("room.topics")}</span>
               <button
                 className="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center cursor-pointer text-gray-400 hover:text-gray-600 transition-colors"
                 onClick={() => setSidePanelOpen(false)}
@@ -621,7 +629,13 @@ function RoomInner({
               transition={{ type: "spring", stiffness: 300, damping: 25 }}
             >
               <p className="text-sm font-semibold text-gray-700">
-                Remove <span className="text-[#BA3033]">{kickConfirm.name}</span> from the room?
+                {t("room.kick.confirm", { name: kickConfirm.name }).split(kickConfirm.name).map((part, i, arr) =>
+                  i < arr.length - 1 ? (
+                    <span key={i}>{part}<span className="text-[#BA3033]">{kickConfirm.name}</span></span>
+                  ) : (
+                    <span key={i}>{part}</span>
+                  )
+                )}
               </p>
               <div className="flex gap-3">
                 <motion.button
@@ -630,7 +644,7 @@ function RoomInner({
                   whileTap={{ scale: 0.98 }}
                   onClick={handleKickCancel}
                 >
-                  Cancel
+                  {t("room.kick.cancel")}
                 </motion.button>
                 <motion.button
                   className="flex-1 px-4 py-2 rounded-xl bg-red-500 text-white font-semibold text-sm cursor-pointer hover:bg-red-600 transition-colors shadow-md"
@@ -638,7 +652,7 @@ function RoomInner({
                   whileTap={{ scale: 0.98 }}
                   onClick={handleKickConfirm}
                 >
-                  Remove
+                  {t("room.kick.remove")}
                 </motion.button>
               </div>
             </motion.div>
@@ -658,7 +672,13 @@ function RoomInner({
               transition={{ type: "spring", stiffness: 300, damping: 25 }}
             >
               <p className="text-sm font-semibold text-gray-700">
-                Make <span className="text-[#7F6CB1]">{hostConfirm.name}</span> the new host?
+                {t("room.host.confirm", { name: hostConfirm.name }).split(hostConfirm.name).map((part, i, arr) =>
+                  i < arr.length - 1 ? (
+                    <span key={i}>{part}<span className="text-[#7F6CB1]">{hostConfirm.name}</span></span>
+                  ) : (
+                    <span key={i}>{part}</span>
+                  )
+                )}
               </p>
               <div className="flex gap-3">
                 <motion.button
@@ -667,7 +687,7 @@ function RoomInner({
                   whileTap={{ scale: 0.98 }}
                   onClick={() => setHostConfirm(null)}
                 >
-                  Cancel
+                  {t("room.host.cancel")}
                 </motion.button>
                 <motion.button
                   className="flex-1 px-4 py-2 rounded-xl bg-[#7F6CB1] text-white font-semibold text-sm cursor-pointer hover:bg-[#6B5A9E] transition-colors shadow-md"
@@ -675,7 +695,7 @@ function RoomInner({
                   whileTap={{ scale: 0.98 }}
                   onClick={handleHostConfirm}
                 >
-                  Transfer
+                  {t("room.host.transfer")}
                 </motion.button>
               </div>
             </motion.div>
@@ -693,7 +713,7 @@ function RoomInner({
             exit={{ opacity: 0, y: -20, scale: 0.9 }}
             transition={{ type: "spring", stiffness: 300, damping: 25 }}
           >
-            ⭐ You are now the host!
+            {t("room.youAreHost")}
           </motion.div>
         )}
       </AnimatePresence>
@@ -703,7 +723,7 @@ function RoomInner({
         <div id="room__disconnected" className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl p-6 text-center">
             <p className="text-sm font-semibold text-[#BA3033]">
-              Connection lost. Reconnecting...
+              {t("room.connectionLost")}
             </p>
           </div>
         </div>

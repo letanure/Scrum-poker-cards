@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
 interface TopicBarProps {
   topics: string[];
@@ -19,12 +20,13 @@ export function TopicBar({
   onToggleEdit,
   isEditing = false,
 }: TopicBarProps) {
+  const { t } = useTranslation();
   const hasTopic = topics.length > 0;
   const isFirst = currentTopicIndex <= 0;
   const isLast = currentTopicIndex >= topics.length - 1;
   const isDone = currentTopicIndex >= topics.length;
   const displayIndex = isDone ? topics.length : currentTopicIndex + 1;
-  const currentTopic = isDone ? "All topics done" : (topics[currentTopicIndex] ?? "");
+  const currentTopic = isDone ? t("topicBar.allDone") : (topics[currentTopicIndex] ?? "");
 
   return (
     <motion.div
@@ -61,7 +63,7 @@ export function TopicBar({
           </>
         ) : (
           <span className="text-xs text-gray-400 italic">
-            No topics added
+            {t("topicBar.noTopics")}
           </span>
         )}
       </div>
@@ -110,7 +112,7 @@ export function TopicBar({
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
           onClick={onToggleEdit}
-          title={hasTopic ? "Edit topics" : "Add topics"}
+          title={hasTopic ? t("topicBar.editTopics") : t("topicBar.addTopics")}
         >
           {hasTopic ? (
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">

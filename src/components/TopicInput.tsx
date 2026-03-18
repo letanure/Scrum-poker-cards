@@ -1,5 +1,6 @@
 import { useState, useCallback, type ChangeEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
 interface TopicInputProps {
   topics: string[];
@@ -7,6 +8,7 @@ interface TopicInputProps {
 }
 
 export function TopicInput({ topics, onSetTopics }: TopicInputProps) {
+  const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
   const [textValue, setTextValue] = useState("");
 
@@ -61,7 +63,7 @@ export function TopicInput({ topics, onSetTopics }: TopicInputProps) {
         >
           &#9654;
         </span>
-        <span>Add topics (optional)</span>
+        <span>{t("topicInput.addTopics")}</span>
         {topics.length > 0 && (
           <span className="ml-auto px-2 py-0.5 rounded-full bg-[#BA3033] text-white text-xs font-bold">
             {topics.length}
@@ -82,7 +84,7 @@ export function TopicInput({ topics, onSetTopics }: TopicInputProps) {
               <textarea
                 value={textValue}
                 onChange={handleTextChange}
-                placeholder="Paste topics here, one per line..."
+                placeholder={t("topicInput.pastePlaceholder")}
                 rows={4}
                 className="w-full px-3 py-2 rounded-xl border border-[#F8ABAA]/50 bg-white text-sm text-gray-700 placeholder-gray-400 outline-none focus:border-[#BA3033] focus:ring-2 focus:ring-[#BA3033]/20 transition-all resize-y"
               />
@@ -93,7 +95,7 @@ export function TopicInput({ topics, onSetTopics }: TopicInputProps) {
                 onClick={handleAdd}
                 disabled={textValue.trim().length === 0}
               >
-                Add
+                {t("topicInput.addButton")}
               </motion.button>
             </div>
 
@@ -101,13 +103,13 @@ export function TopicInput({ topics, onSetTopics }: TopicInputProps) {
               <div className="flex flex-col gap-1">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-gray-500">
-                    Current topics
+                    {t("topicInput.currentTopics")}
                   </span>
                   <button
                     className="text-xs text-[#BA3033] hover:underline cursor-pointer"
                     onClick={handleClearAll}
                   >
-                    Clear all
+                    {t("topicInput.clearAll")}
                   </button>
                 </div>
                 <ul className="flex flex-col gap-1 max-h-48 overflow-y-auto">

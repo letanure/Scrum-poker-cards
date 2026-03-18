@@ -1,5 +1,6 @@
 import { useState, useCallback, type ChangeEvent, type KeyboardEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
 interface HostControlsProps {
   topic: string;
@@ -16,6 +17,7 @@ export function HostControls({
   topics = [],
   onSetTopics,
 }: HostControlsProps) {
+  const { t } = useTranslation();
   const [localTopic, setLocalTopic] = useState(topic);
   const [inputText, setInputText] = useState("");
 
@@ -80,7 +82,7 @@ export function HostControls({
           onChange={handleTopicChange}
           onBlur={handleTopicBlur}
           onKeyDown={handleTopicKeyDown}
-          placeholder="Enter story or topic..."
+          placeholder={t("host.topicPlaceholder")}
           className="w-full px-4 py-2 rounded-xl border border-[#F8ABAA]/50 bg-white text-sm text-gray-700 placeholder-gray-400 outline-none focus:border-[#BA3033] focus:ring-2 focus:ring-[#BA3033]/20 transition-all"
         />
       )}
@@ -90,9 +92,9 @@ export function HostControls({
         <>
           <ul className="flex flex-col gap-1 max-h-52 overflow-y-auto">
             <AnimatePresence initial={false}>
-              {topics.map((t, i) => (
+              {topics.map((topicItem, i) => (
                 <motion.li
-                  key={`${i}-${t}`}
+                  key={`${i}-${topicItem}`}
                   className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-50 text-sm text-gray-700 group"
                   initial={{ opacity: 0, x: -20, height: 0 }}
                   animate={{ opacity: 1, x: 0, height: "auto" }}
@@ -102,11 +104,11 @@ export function HostControls({
                   <span className="text-xs font-bold text-[#BA3033]/50 w-5 text-right shrink-0">
                     {i + 1}
                   </span>
-                  <span className="flex-1 truncate">{t}</span>
+                  <span className="flex-1 truncate">{topicItem}</span>
                   <button
                     className="w-5 h-5 flex items-center justify-center rounded text-gray-300 group-hover:text-[#BA3033] cursor-pointer transition-colors shrink-0"
                     onClick={() => handleRemoveTopic(i)}
-                    aria-label={`Remove: ${t}`}
+                    aria-label={`Remove: ${topicItem}`}
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3">
                       <path d="M18 6L6 18M6 6l12 12" />
@@ -123,7 +125,7 @@ export function HostControls({
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyDown={handleInputKeyDown}
-              placeholder={topics.length > 0 ? "Add more topics..." : "Add topics, one per line..."}
+              placeholder={topics.length > 0 ? t("host.addMoreTopics") : t("host.addTopicsOneLine")}
               rows={1}
               className="flex-1 px-3 py-2 rounded-xl border border-[#F8ABAA]/50 bg-white text-sm text-gray-700 placeholder-gray-400 outline-none focus:border-[#BA3033] focus:ring-2 focus:ring-[#BA3033]/20 transition-all resize-none"
             />
@@ -134,7 +136,7 @@ export function HostControls({
               onClick={handleAddTopics}
               disabled={inputText.trim().length === 0}
             >
-              Add
+              {t("host.addButton")}
             </motion.button>
           </div>
         </>

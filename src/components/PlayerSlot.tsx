@@ -1,5 +1,6 @@
 import { useRef, useEffect } from "react";
 import { motion, AnimatePresence, useAnimationControls } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { Card } from "./Card";
 
 interface PlayerSlotProps {
@@ -29,6 +30,7 @@ export function PlayerSlot({
   onKick,
   onMakeHost,
 }: PlayerSlotProps) {
+  const { t } = useTranslation();
   const isRevealed = vote !== null;
   const controls = useAnimationControls();
   const prevVersionRef = useRef(voteVersion);
@@ -112,7 +114,7 @@ export function PlayerSlot({
             <button
               onClick={onMakeHost}
               className="w-6 h-6 rounded-full bg-[#7F6CB1]/10 text-[#7F6CB1] flex items-center justify-center cursor-pointer hover:bg-[#7F6CB1]/20 transition-colors"
-              title="Make host"
+              title={t("playerSlot.makeHost")}
             >
               <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3">
                 <path d="M8 1l2.2 4.5L15 6.3l-3.5 3.4.8 4.8L8 12.3 3.7 14.5l.8-4.8L1 6.3l4.8-.8z" />
@@ -123,7 +125,7 @@ export function PlayerSlot({
             <button
               onClick={onKick}
               className="w-6 h-6 rounded-full bg-red-50 text-red-400 flex items-center justify-center cursor-pointer hover:bg-red-100 hover:text-red-500 transition-colors"
-              title="Remove player"
+              title={t("playerSlot.removePlayer")}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3">
                 <path d="M18 6L6 18M6 6l12 12" />

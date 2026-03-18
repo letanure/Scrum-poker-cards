@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { Card } from "./Card.tsx";
 import { getCardInfo } from "../lib/cards.ts";
 
@@ -24,6 +25,7 @@ export function CardHand({
   onCardDescription,
   disabled,
 }: CardHandProps) {
+  const { t } = useTranslation();
   const totalCards = cards.length;
   const midIndex = (totalCards - 1) / 2;
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
@@ -39,11 +41,15 @@ export function CardHand({
 
   const confirmSelection = useCallback((value: string) => {
     const info = getCardInfo(value);
-    if (info?.description && onCardDescription) {
-      onCardDescription(info.description, info.explanation);
+    if (info && onCardDescription) {
+      const descKey = `cards.${value}.description`;
+      const expKey = `cards.${value}.explanation`;
+      const description = t(descKey);
+      const explanation = info.explanation ? t(expKey) : undefined;
+      onCardDescription(description, explanation);
     }
     onSelect(value);
-  }, [onSelect, onCardDescription]);
+  }, [onSelect, onCardDescription, t]);
 
   useEffect(() => {
     if (disabled) return;

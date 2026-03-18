@@ -1,12 +1,15 @@
 import { useState, useCallback, type ChangeEvent, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { generateRoomId, PRESETS, PRESET_LABELS, CARD_MAP, type PresetName } from "../lib/cards.ts";
+import { useTranslation } from "react-i18next";
+import { generateRoomId, PRESETS, CARD_MAP, type PresetName } from "../lib/cards.ts";
 import { CardBackground } from "../components/CardBackground.tsx";
 import { Footer } from "../components/Footer.tsx";
+import { LanguageSwitcher } from "../components/LanguageSwitcher.tsx";
 import { trackEvent } from "../lib/analytics.ts";
 
 export function Landing() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [name, setName] = useState(() => localStorage.getItem("poker-name") ?? "");
   const [joinLink, setJoinLink] = useState("");
@@ -68,10 +71,10 @@ export function Landing() {
         {/* Title */}
         <div className="text-center">
           <h1 className="text-4xl md:text-5xl font-bold text-white drop-shadow-lg font-[Nunito]">
-            Scrum Poker Cards
+            {t("landing.title")}
           </h1>
           <p className="text-white/80 mt-2 text-lg">
-            Estimate together, with style.
+            {t("landing.subtitle")}
           </p>
         </div>
 
@@ -83,14 +86,14 @@ export function Landing() {
               htmlFor="player-name"
               className="block text-sm font-semibold text-gray-600 mb-1.5"
             >
-              Your name
+              {t("landing.yourName")}
             </label>
             <input
               id="player-name"
               type="text"
               value={name}
               onChange={handleNameChange}
-              placeholder="Enter your name..."
+              placeholder={t("landing.namePlaceholder")}
               className="w-full px-4 py-3 rounded-xl border border-[#F8ABAA]/50 bg-white text-gray-700 placeholder-gray-400 outline-none focus:border-[#BA3033] focus:ring-2 focus:ring-[#BA3033]/20 transition-all text-sm"
               maxLength={30}
             />
@@ -99,7 +102,7 @@ export function Landing() {
           {/* Preset selector */}
           <div>
             <label className="block text-sm font-semibold text-gray-600 mb-1.5">
-              Card deck
+              {t("landing.cardDeck")}
             </label>
             <div className="flex flex-wrap gap-2">
               {PRESET_NAMES.map((presetName) => (
@@ -115,7 +118,7 @@ export function Landing() {
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setSelectedPreset(presetName)}
                 >
-                  {PRESET_LABELS[presetName]}
+                  {t(`presets.${presetName}`)}
                 </motion.button>
               ))}
             </div>
@@ -132,13 +135,13 @@ export function Landing() {
             onClick={handleCreate}
             disabled={!name.trim()}
           >
-            Create New Session
+            {t("landing.createSession")}
           </motion.button>
 
           {/* Divider */}
           <div className="flex items-center gap-3">
             <div className="flex-1 h-px bg-gray-200" />
-            <span className="text-xs text-gray-400 font-medium">or</span>
+            <span className="text-xs text-gray-400 font-medium">{t("landing.or")}</span>
             <div className="flex-1 h-px bg-gray-200" />
           </div>
 
@@ -149,7 +152,7 @@ export function Landing() {
                 type="text"
                 value={joinLink}
                 onChange={(e) => setJoinLink(e.target.value)}
-                placeholder="Paste room link or ID..."
+                placeholder={t("landing.joinPlaceholder")}
                 className="w-full px-4 py-3 rounded-xl border border-[#F8ABAA]/50 bg-white text-gray-700 placeholder-gray-400 outline-none focus:border-[#7F6CB1] focus:ring-2 focus:ring-[#7F6CB1]/20 transition-all text-sm"
               />
               <motion.button
@@ -163,7 +166,7 @@ export function Landing() {
                 }}
                 disabled={!name.trim() || !joinLink.trim()}
               >
-                Join Session
+                {t("landing.joinSession")}
               </motion.button>
             </form>
           ) : (
@@ -173,28 +176,32 @@ export function Landing() {
               whileTap={{ scale: 0.98 }}
               onClick={() => setShowJoin(true)}
             >
-              Join Existing Session
+              {t("landing.joinExisting")}
             </motion.button>
           )}
         </div>
 
         {/* Fun badges */}
         <div className="flex flex-wrap justify-center gap-3">
-          {["No signup", "Free forever", "Fun cards!"].map((badge) => (
+          {(["landing.badgeNoSignup", "landing.badgeFree", "landing.badgeFun"] as const).map((key) => (
             <span
-              key={badge}
+              key={key}
               className="px-3 py-1 rounded-full bg-white/20 text-white text-xs font-semibold backdrop-blur-sm"
             >
-              {badge}
+              {t(key)}
             </span>
           ))}
         </div>
 
         {/* SEO description */}
         <h2 className="text-white/50 text-xs text-center max-w-sm leading-relaxed font-normal">
-          Open-source planning poker with illustrated cards by Redbooth. Create a session, share the link, estimate stories as a team — all in real-time, right in your browser.
+          {t("landing.seoDescription")}
         </h2>
       </motion.div>
+
+      <div className="z-10 mt-4 mb-2">
+        <LanguageSwitcher />
+      </div>
 
       <Footer />
     </div>

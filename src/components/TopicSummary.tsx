@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
 interface TopicSummaryProps {
   topicResults: Record<
@@ -10,13 +11,14 @@ interface TopicSummaryProps {
 }
 
 export function TopicSummary({ topicResults, players }: TopicSummaryProps) {
+  const { t } = useTranslation();
   const sortedIndices = Object.keys(topicResults)
     .map(Number)
     .sort((a, b) => a - b);
 
   const handleCopyToClipboard = useCallback(() => {
     const playerNames = players.map((p) => p.name);
-    const header = `| # | Topic | Average | ${playerNames.join(" | ")} |`;
+    const header = `| # | ${t("summary.topicColumn")} | ${t("summary.avgColumn")} | ${playerNames.join(" | ")} |`;
     const separator = `|---|-------|---------|${playerNames.map(() => "---").join("|")}|`;
 
     const rows = sortedIndices.map((idx) => {
@@ -31,7 +33,7 @@ export function TopicSummary({ topicResults, players }: TopicSummaryProps) {
 
     const markdown = [header, separator, ...rows].join("\n");
     void navigator.clipboard.writeText(markdown);
-  }, [topicResults, players, sortedIndices]);
+  }, [topicResults, players, sortedIndices, t]);
 
   if (sortedIndices.length === 0) return null;
 
@@ -44,14 +46,14 @@ export function TopicSummary({ topicResults, players }: TopicSummaryProps) {
       transition={{ type: "spring", stiffness: 200, damping: 20 }}
     >
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold text-[#BA3033]">Topic Summary</h3>
+        <h3 className="text-sm font-bold text-[#BA3033]">{t("summary.title")}</h3>
         <motion.button
           className="px-3 py-1 rounded-lg bg-gray-100 text-xs font-semibold text-gray-600 hover:bg-gray-200 cursor-pointer transition-colors"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={handleCopyToClipboard}
         >
-          Copy to clipboard
+          {t("summary.copyClipboard")}
         </motion.button>
       </div>
 
@@ -63,10 +65,10 @@ export function TopicSummary({ topicResults, players }: TopicSummaryProps) {
                 #
               </th>
               <th className="py-2 px-2 text-left text-xs font-bold text-gray-500">
-                Topic
+                {t("summary.topicColumn")}
               </th>
               <th className="py-2 px-2 text-center text-xs font-bold text-gray-500 w-16">
-                Avg
+                {t("summary.avgColumn")}
               </th>
               {players.map((p) => (
                 <th

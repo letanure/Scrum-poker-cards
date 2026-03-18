@@ -1,5 +1,6 @@
 import { useMemo, useEffect, useState, useCallback, type ChangeEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { CONFIDENCE_LEVELS, type ConfidenceLevel } from "../lib/protocol.ts";
 
 interface PlayerInfo {
@@ -99,101 +100,100 @@ function isOutlier(votes: Record<string, string>, playerId: string): boolean {
   return playerNumeric > 2 * median || playerNumeric < 0.5 * median;
 }
 
-function detectMemeMessage(votes: Record<string, string>): string | null {
-  const values = Object.values(votes);
-  if (values.length === 0) return null;
+function useDetectMemeMessage(votes: Record<string, string>): string | null {
+  const { t } = useTranslation();
 
-  const numericValues = values
-    .map((v) => parseFloat(v))
-    .filter((n) => !isNaN(n));
+  return useMemo(() => {
+    const values = Object.values(votes);
+    if (values.length === 0) return null;
 
-  // Count occurrences
-  const counts = new Map<string, number>();
-  for (const v of values) {
-    counts.set(v, (counts.get(v) ?? 0) + 1);
-  }
+    const numericValues = values
+      .map((v) => parseFloat(v))
+      .filter((n) => !isNaN(n));
 
-  const uniqueValues = new Set(values);
-
-  // Only 1 voter
-  if (values.length === 1) {
-    return "Lonely vote... 🦗";
-  }
-
-  // Everyone voted the same (2+ voters)
-  if (uniqueValues.size === 1) {
-    const single = values[0];
-    // All voted coffee
-    if (single === "☕" || single?.toLowerCase() === "coffee") {
-      return "Break time! ☕";
+    // Count occurrences
+    const counts = new Map<string, number>();
+    for (const v of values) {
+      counts.set(v, (counts.get(v) ?? 0) + 1);
     }
-    // All voted ?
-    if (single === "?") {
-      return "Nobody knows anything 🙈";
+
+    const uniqueValues = new Set(values);
+
+    // Only 1 voter
+    if (values.length === 1) {
+      return t("results.meme.lonelyVote");
     }
-    return "Ship it! 🚀";
-  }
 
-  // Priority 3: All votes are low (≤3)
-  if (
-    numericValues.length === values.length &&
-    numericValues.every((n) => n <= 3)
-  ) {
-    return "Too easy! Next! ⚡";
-  }
-
-  // Priority 4: All votes are high (≥13)
-  if (
-    numericValues.length === values.length &&
-    numericValues.every((n) => n >= 13)
-  ) {
-    return "This sprint is doomed 💀";
-  }
-
-  // Priority 5: Huge spread (max - min ≥ 10)
-  if (numericValues.length >= 2) {
-    const min = Math.min(...numericValues);
-    const max = Math.max(...numericValues);
-    if (max - min >= 10) {
-      return "We have absolutely no idea 🤯";
+    // Everyone voted the same (2+ voters)
+    if (uniqueValues.size === 1) {
+      const single = values[0];
+      if (single === "☕" || single?.toLowerCase() === "coffee") {
+        return t("results.meme.breakTime");
+      }
+      if (single === "?") {
+        return t("results.meme.nobodyKnows");
+      }
+      return t("results.meme.shipIt");
     }
-  }
 
-  // Priority 6: Exactly one outlier (differs from all others by >2x the median)
-  if (numericValues.length >= 3) {
-    const sorted = [...numericValues].sort((a, b) => a - b);
-    const mid = Math.floor(sorted.length / 2);
-    const median =
-      sorted.length % 2 === 0
-        ? ((sorted[mid - 1] ?? 0) + (sorted[mid] ?? 0)) / 2
-        : (sorted[mid] ?? 0);
+    // All votes are low (<=3)
+    if (
+      numericValues.length === values.length &&
+      numericValues.every((n) => n <= 3)
+    ) {
+      return t("results.meme.tooEasy");
+    }
 
-    if (median > 0) {
-      const outliers = numericValues.filter(
-        (n) => Math.abs(n - median) > 2 * median
-      );
-      if (outliers.length === 1) {
-        return "Someone's seen things... 👀";
+    // All votes are high (>=13)
+    if (
+      numericValues.length === values.length &&
+      numericValues.every((n) => n >= 13)
+    ) {
+      return t("results.meme.doomed");
+    }
+
+    // Huge spread (max - min >= 10)
+    if (numericValues.length >= 2) {
+      const min = Math.min(...numericValues);
+      const max = Math.max(...numericValues);
+      if (max - min >= 10) {
+        return t("results.meme.noIdea");
       }
     }
-  }
 
-  // Priority 7: High consensus (≥80%) but not unanimous
-  if (uniqueValues.size > 1) {
-    let maxCount = 0;
-    for (const count of counts.values()) {
-      if (count > maxCount) maxCount = count;
+    // Exactly one outlier
+    if (numericValues.length >= 3) {
+      const sorted = [...numericValues].sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      const median =
+        sorted.length % 2 === 0
+          ? ((sorted[mid - 1] ?? 0) + (sorted[mid] ?? 0)) / 2
+          : (sorted[mid] ?? 0);
+
+      if (median > 0) {
+        const outliers = numericValues.filter(
+          (n) => Math.abs(n - median) > 2 * median
+        );
+        if (outliers.length === 1) {
+          return t("results.meme.seenThings");
+        }
+      }
     }
-    const consensusPercent = Math.round((maxCount / values.length) * 100);
-    if (consensusPercent >= 80) {
-      return "Almost there! 🎯";
+
+    // High consensus (>=80%) but not unanimous
+    if (uniqueValues.size > 1) {
+      let localMaxCount = 0;
+      for (const count of counts.values()) {
+        if (count > localMaxCount) localMaxCount = count;
+      }
+      const consensusPercent = Math.round((localMaxCount / values.length) * 100);
+      if (consensusPercent >= 80) {
+        return t("results.meme.almostThere");
+      }
     }
-  }
 
-  // Priority 8: All voted coffee (already handled above in unanimous check)
-  // Priority 9: All voted ? (already handled above in unanimous check)
-
-  return null;
+    return null;
+  }, [votes, t]);
 }
 
 function ConfettiPiece({ delay }: { delay: number }) {
@@ -339,6 +339,7 @@ function computeConfidenceSummary(
 }
 
 function ConfidenceBar({ confidences }: { confidences: Record<string, ConfidenceLevel> }) {
+  const { t } = useTranslation();
   const summary = useMemo(
     () => computeConfidenceSummary(confidences),
     [confidences],
@@ -347,15 +348,21 @@ function ConfidenceBar({ confidences }: { confidences: Record<string, Confidence
   const total = summary.confident + summary.guessing + summary.noIdea;
   if (total === 0) return null;
 
+  const OVERALL_LABELS: Record<string, string> = {
+    HIGH: t("results.confidenceHigh"),
+    MEDIUM: t("results.confidenceMedium"),
+    LOW: t("results.confidenceLow"),
+  };
+
   const badges: Array<{ count: number; label: string; color: string; emoji: string }> = [];
   if (summary.confident > 0) {
-    badges.push({ count: summary.confident, label: "confident", color: "#94A979", emoji: "\uD83D\uDE0E" });
+    badges.push({ count: summary.confident, label: t("results.confidentCount", { count: summary.confident }), color: "#94A979", emoji: "\uD83D\uDE0E" });
   }
   if (summary.guessing > 0) {
-    badges.push({ count: summary.guessing, label: "guessing", color: "#F39C12", emoji: "\uD83E\uDD14" });
+    badges.push({ count: summary.guessing, label: t("results.guessingCount", { count: summary.guessing }), color: "#F39C12", emoji: "\uD83E\uDD14" });
   }
   if (summary.noIdea > 0) {
-    badges.push({ count: summary.noIdea, label: "no idea", color: "#E74C3C", emoji: "\uD83E\uDD37" });
+    badges.push({ count: summary.noIdea, label: t("results.noIdeaCount", { count: summary.noIdea }), color: "#E74C3C", emoji: "\uD83E\uDD37" });
   }
 
   return (
@@ -366,23 +373,23 @@ function ConfidenceBar({ confidences }: { confidences: Record<string, Confidence
       transition={{ delay: 0.15 }}
     >
       <div className="flex items-center gap-2">
-        <span className="text-xs font-semibold text-gray-500">Team confidence:</span>
+        <span className="text-xs font-semibold text-gray-500">{t("results.teamConfidence")}</span>
         <span
           className="text-xs font-bold px-2 py-0.5 rounded-full text-white"
           style={{ backgroundColor: summary.overallColor }}
         >
-          {summary.overall}
+          {OVERALL_LABELS[summary.overall] ?? summary.overall}
         </span>
       </div>
       <div className="flex flex-wrap justify-center gap-2">
         {badges.map((badge) => (
           <span
-            key={badge.label}
+            key={badge.color}
             className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full border"
             style={{ borderColor: badge.color, color: badge.color }}
           >
             <span>{badge.emoji}</span>
-            {badge.count} {badge.label}
+            {badge.label}
           </span>
         ))}
       </div>
@@ -391,8 +398,9 @@ function ConfidenceBar({ confidences }: { confidences: Record<string, Confidence
 }
 
 export function Results({ votes, players, confidences, explanations, currentUserId, onExplain }: ResultsProps) {
+  const { t } = useTranslation();
   const stats = useMemo(() => computeStats(votes), [votes]);
-  const memeMessage = useMemo(() => detectMemeMessage(votes), [votes]);
+  const memeMessage = useDetectMemeMessage(votes);
   const [showConfetti, setShowConfetti] = useState(false);
   const [explainText, setExplainText] = useState("");
 
@@ -437,7 +445,7 @@ export function Results({ votes, players, confidences, explanations, currentUser
     >
       <AnimatePresence>{showConfetti && <Confetti />}</AnimatePresence>
 
-      <h3 className="text-lg font-bold text-[#BA3033]">Results</h3>
+      <h3 className="text-lg font-bold text-[#BA3033]">{t("results.title")}</h3>
 
       {/* Meme reveal */}
       <AnimatePresence>
@@ -448,33 +456,33 @@ export function Results({ votes, players, confidences, explanations, currentUser
       <div className="flex flex-wrap justify-center gap-3">
         {stats.average !== null && (
           <StatCard
-            label="Average"
+            label={t("results.average")}
             value={String(stats.average)}
             color="#BA3033"
           />
         )}
         <StatCard
-          label="Consensus"
+          label={t("results.consensus")}
           value={`${stats.consensusPercent}%`}
           color={stats.consensusPercent >= 80 ? "#94A979" : "#7F6CB1"}
         />
         {stats.min !== null && (
           <StatCard
-            label="Min"
+            label={t("results.min")}
             value={String(stats.min)}
             color="#7F6CB1"
           />
         )}
         {stats.max !== null && (
           <StatCard
-            label="Max"
+            label={t("results.max")}
             value={String(stats.max)}
             color="#F0649B"
           />
         )}
         {stats.spread !== null && (
           <StatCard
-            label="Spread"
+            label={t("results.spread")}
             value={String(stats.spread)}
             color="#94A979"
           />
@@ -536,7 +544,7 @@ export function Results({ votes, players, confidences, explanations, currentUser
           transition={{ delay: 0.3 }}
         >
           <p className="text-sm text-gray-600 font-medium">
-            Your vote stands out! Care to explain why?
+            {t("results.outlierPrompt")}
           </p>
           <div className="flex w-full gap-2">
             <input
@@ -546,7 +554,7 @@ export function Results({ votes, players, confidences, explanations, currentUser
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleExplainSubmit();
               }}
-              placeholder="Why did you vote this way?"
+              placeholder={t("results.explainPlaceholder")}
               className="flex-1 px-3 py-2 rounded-xl border border-[#F8ABAA]/50 bg-white text-gray-700 placeholder-gray-400 outline-none focus:border-[#BA3033] focus:ring-2 focus:ring-[#BA3033]/20 transition-all text-sm"
               maxLength={200}
             />
@@ -557,7 +565,7 @@ export function Results({ votes, players, confidences, explanations, currentUser
               onClick={handleExplainSubmit}
               disabled={!explainText.trim()}
             >
-              Send
+              {t("results.sendButton")}
             </motion.button>
           </div>
         </motion.div>
@@ -571,7 +579,7 @@ export function Results({ votes, players, confidences, explanations, currentUser
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <h4 className="text-sm font-bold text-gray-500">Explanations</h4>
+          <h4 className="text-sm font-bold text-gray-500">{t("results.explanations")}</h4>
           <div className="flex flex-col gap-1.5">
             {Object.entries(explanations).map(([playerId, text]) => {
               const player = playerMap.get(playerId);
@@ -590,7 +598,7 @@ export function Results({ votes, players, confidences, explanations, currentUser
                   </div>
                   <div className="flex flex-col">
                     <span className="text-xs font-semibold text-gray-600">
-                      {player?.name ?? "Unknown"}
+                      {player?.name ?? t("results.unknownPlayer")}
                     </span>
                     <span className="text-sm text-gray-700">{text}</span>
                   </div>

@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { PlayerSlot } from "./PlayerSlot";
 
 interface Player {
@@ -40,6 +41,7 @@ export function Table({
   isLastTopic = false,
   phase,
 }: TableProps) {
+  const { t } = useTranslation();
   const votedCount = players.filter((p) => p.hasVoted).length;
   const totalCount = players.length;
   const allVoted = votedCount === totalCount && totalCount > 0;
@@ -79,7 +81,7 @@ export function Table({
         {revealedVotes ? (
           <>
             <span className="text-sm font-semibold text-[#BA3033]">
-              Votes revealed!
+              {t("table.votesRevealed")}
             </span>
             {isHost && isRevealed && hasTopics && onNextTopic && (
               <motion.button
@@ -91,7 +93,7 @@ export function Table({
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", stiffness: 400, damping: 20 }}
               >
-                {isLastTopic ? "Finish & Summary" : "Next Story ▶"}
+                {isLastTopic ? t("table.finishSummary") : t("table.nextStory")}
               </motion.button>
             )}
             {isHost && isRevealed && !hasTopics && onNewRound && (
@@ -104,7 +106,7 @@ export function Table({
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", stiffness: 400, damping: 20 }}
               >
-                New Round
+                {t("table.newRound")}
               </motion.button>
             )}
           </>
@@ -112,14 +114,14 @@ export function Table({
           <>
             {allVoted ? (
               <span className="text-sm font-semibold text-[#94A979]">
-                All players voted
+                {t("table.allVoted")}
               </span>
             ) : (
               <span className="text-sm text-gray-500">
                 <span className="font-semibold text-[#7F6CB1]">{votedCount}</span>
                 {" / "}
                 <span className="font-semibold">{totalCount}</span>
-                {" voted"}
+                {" "}{t("table.votedCount")}
               </span>
             )}
             {isHost && isVoting && onReveal && (
@@ -129,7 +131,7 @@ export function Table({
                 whileTap={{ scale: 0.95 }}
                 onClick={onReveal}
               >
-                Reveal Cards
+                {t("table.revealCards")}
               </motion.button>
             )}
           </>

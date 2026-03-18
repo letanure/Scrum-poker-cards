@@ -1,11 +1,13 @@
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
 interface ShareButtonProps {
   roomId: string;
 }
 
 export function ShareButton({ roomId }: ShareButtonProps) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
 
   const handleCopy = useCallback(async () => {
@@ -48,7 +50,7 @@ export function ShareButton({ roomId }: ShareButtonProps) {
           <path d="M6.5 9.5a3.5 3.5 0 0 0 5 0l2-2a3.5 3.5 0 0 0-5-5l-1 1" />
           <path d="M9.5 6.5a3.5 3.5 0 0 0-5 0l-2 2a3.5 3.5 0 0 0 5 5l1-1" />
         </svg>
-        Share Room
+        {t("share.button")}
       </motion.button>
 
       {/* "Copied!" toast */}
@@ -61,7 +63,7 @@ export function ShareButton({ roomId }: ShareButtonProps) {
             exit={{ opacity: 0, y: -4, scale: 0.8 }}
             transition={{ type: "spring", stiffness: 400, damping: 20 }}
           >
-            Copied!
+            {t("share.copied")}
           </motion.div>
         )}
       </AnimatePresence>

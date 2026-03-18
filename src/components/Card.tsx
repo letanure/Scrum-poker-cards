@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { getCardInfo, CARD_BACK_SVG } from "../lib/cards.ts";
 
 const CARD_SIZES = {
@@ -28,6 +29,7 @@ export function Card({
   widthOverride,
   heightOverride,
 }: CardProps) {
+  const { t } = useTranslation();
   const baseDimensions = CARD_SIZES[size];
   const dimensions = {
     ...baseDimensions,
@@ -38,6 +40,9 @@ export function Card({
   const label = cardInfo?.label ?? value;
   const svgPath = cardInfo?.svgPath;
   const cardColor = cardInfo?.color ?? "#BA3033";
+
+  const descKey = `cards.${value}.description`;
+  const translatedDescription = cardInfo ? t(descKey) : value;
 
   return (
     <motion.div
@@ -75,7 +80,7 @@ export function Card({
             /* Card with SVG illustration */
             <img
               src={svgPath}
-              alt={cardInfo?.description ?? value}
+              alt={translatedDescription}
               className="w-full h-full object-cover"
               draggable={false}
             />
